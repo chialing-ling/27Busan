@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -8,5 +9,484 @@
 <body>
     <h1>✈️ 27Busan 住宿比較</h1>
     <p>網站建立成功！</p>
+=======
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>27Busan｜住宿比較</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+:root{
+  --bg:#f6f7fb;--card:#fff;--text:#1f2937;--sub:#6b7280;--line:#e5e7eb;
+  --primary:#2563eb;--primary-soft:#eff6ff;--good:#047857;--warn:#b45309;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei",Arial,sans-serif;
+}
+header{background:#111827;color:#fff;padding:26px 18px}
+.wrap{width:min(1280px,calc(100% - 28px));margin:auto}
+h1{margin:0;font-size:clamp(28px,5vw,42px)}
+header p{margin:8px 0 0;color:#cbd5e1}
+.toolbar{
+  margin:18px 0 14px;background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center
+}
+button,select{
+  font:inherit;border:1px solid var(--line);border-radius:9px;background:#fff;padding:9px 11px
+}
+button{cursor:pointer}
+button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.count{margin-left:auto;color:var(--sub);font-size:13px}
+.layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(380px,.85fr);
+  gap:16px;
+  align-items:start;
+  padding-bottom:36px;
+}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:16px;box-shadow:0 8px 24px rgba(15,23,42,.06);
+  transition:border-color .2s ease,box-shadow .2s ease,background .2s ease,transform .2s ease;
+}
+.card.selected-card{
+  border:2px solid var(--primary);
+  background:var(--primary-soft);
+  box-shadow:0 12px 30px rgba(37,99,235,.18);
+  transform:translateY(-2px);
+}
+.head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.name{font-size:20px;font-weight:800;line-height:1.35}
+.name.map-name{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px}
+.name.map-name:hover{color:var(--primary)}
+.name.map-name:focus{outline:2px solid var(--primary);outline-offset:3px;border-radius:4px}
+.meta{font-size:13px;color:var(--sub);margin-top:5px}
+.platform{
+  font-size:12px;padding:5px 8px;border-radius:999px;background:var(--primary-soft);
+  color:var(--primary);font-weight:700;white-space:nowrap
+}
+.title{margin:12px 0 4px;font-weight:700}
+.desc{font-size:14px;color:#4b5563;line-height:1.55}
+.price-grid,.info-grid,.amenity-grid{display:grid;gap:8px;margin-top:12px}
+.price-grid{grid-template-columns:1fr}
+.info-grid{grid-template-columns:1fr}
+.amenity-grid{grid-template-columns:repeat(3,1fr)}
+.box{background:#f8fafc;border-radius:10px;padding:10px;min-width:0}
+.box small{display:block;color:var(--sub);font-size:11px;margin-bottom:4px}
+.box strong{font-size:16px}
+.amenity{border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px}
+.yes{background:#ecfdf5;color:var(--good)}
+.no{background:#fef2f2;color:#b91c1c}
+.unknown{background:#f9fafb;color:var(--sub)}
+.section{margin-top:13px}
+.section-title{font-size:12px;color:var(--sub);font-weight:700;margin-bottom:5px}
+.note,.cancel{white-space:pre-line;font-size:14px;line-height:1.6}
+.cancel{background:#fff7ed;color:var(--warn);padding:9px 10px;border-radius:10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 8px;background:#fff}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.actions a{
+  flex:1;text-align:center;text-decoration:none;border:1px solid var(--line);
+  border-radius:9px;padding:9px 11px;font-weight:700;color:var(--text)
+}
+.actions a.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+.map-panel{
+  position:sticky;top:14px;background:#fff;border:1px solid var(--line);
+  border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,.06)
+}
+.map-head{padding:13px 15px;border-bottom:1px solid var(--line)}
+.map-head strong{display:block;margin-bottom:4px}
+.map-head span{font-size:12px;color:var(--sub);line-height:1.5}
+#map{height:680px;background:#e5e7eb}
+.map-note{padding:10px 13px;border-top:1px solid var(--line);font-size:12px;color:var(--sub);line-height:1.5}
+.empty{padding:30px;text-align:center;color:var(--sub);background:#fff;border-radius:14px}
+
+@media(max-width:1050px){
+  .layout{grid-template-columns:1fr}
+  .map-panel{position:static;order:-1}
+  #map{height:360px}
+}
+@media(max-width:780px){
+  .grid{grid-template-columns:1fr}
+  .count{width:100%;margin-left:0}
+}
+@media(max-width:480px){
+  .price-grid,.info-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>🛌🏻 27Busan 住宿比較</h1>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="toolbar">
+    <button class="active" data-area="全部">全部</button>
+    <div id="areaButtons" style="display:contents"></div>
+
+    <select id="sort">
+      <option value="id">依編號</option>
+      <option value="priceAsc">總價：低 → 高</option>
+      <option value="ratingDesc">評分：高 → 低</option>
+    </select>
+
+    <button id="btnRefresh">重新讀取 hotels.json</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <section class="layout">
+
+    <div class="grid" id="list"></div>
+
+    <aside class="map-panel">
+      <div class="map-head">
+        <strong>🗺️ 住宿位置</strong>
+        <span>有填 lat / lng 的住宿才會顯示 Marker；點住宿標題可直接定位到地圖。</span>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="map-note">
+        Airbnb 若尚未提供精確地址，可填附近商家的座標作為參考位置。
+      </div>
+    </aside>
+
+  </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let hotels = [];
+let area = "全部";
+let sortMode = "id";
+let map = null;
+let markerLayer = null;
+let markersByHotelId = new Map();
+
+function money(v){
+  return v == null ? "待補" : "NT$" + Number(v).toLocaleString("zh-TW");
+}
+function text(v,fallback="待補"){
+  return v === null || v === undefined || v === "" ? fallback : v;
+}
+function amenity(value,label){
+  if(value === true) return `<div class="amenity yes">✓ ${label}：有</div>`;
+  if(value === false) return `<div class="amenity no">✕ ${label}：沒有</div>`;
+  return `<div class="amenity unknown">? ${label}：未確認</div>`;
+}
+function info(label,value){
+  return `<div class="box"><small>${label}</small><strong>${text(value)}</strong></div>`;
+}
+function safe(v){
+  return String(v ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function initMap(){
+  if(typeof L === "undefined"){
+    document.getElementById("map").innerHTML =
+      '<div style="padding:24px;color:#6b7280">Leaflet 載入失敗。</div>';
+    return;
+  }
+
+  map = L.map("map").setView([35.155,129.115],11);
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:19,
+    attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+function getHotelPoint(h){
+  if(h.lat == null || h.lng == null) return null;
+
+  const lat = Number(h.lat);
+  const lng = Number(h.lng);
+
+  if(!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  return {lat,lng};
+}
+
+function focusHotelOnMap(hotelId){
+  const h = hotels.find(x=>Number(x.id)===Number(hotelId));
+  if(!h || !map) return;
+
+  const pt = getHotelPoint(h);
+  if(!pt) return;
+
+  const marker = markersByHotelId.get(String(h.id));
+  const targetZoom = Math.max(map.getZoom(),16);
+
+  map.flyTo([pt.lat,pt.lng],targetZoom,{
+    animate:true,
+    duration:0.7
+  });
+
+  if(marker){
+    window.setTimeout(()=>marker.openPopup(),450);
+  }
+
+  if(window.matchMedia("(max-width: 1050px)").matches){
+    document.querySelector(".map-panel")?.scrollIntoView({
+      behavior:"smooth",
+      block:"start"
+    });
+  }
+}
+
+function focusCard(hotelId){
+  document.querySelectorAll(".card").forEach(card=>{
+    card.classList.remove("selected-card");
+  });
+
+  const card = document.querySelector(`.card[data-hotel-id="${hotelId}"]`);
+  if(!card) return;
+
+  card.classList.add("selected-card");
+
+  card.scrollIntoView({
+    behavior:"smooth",
+    block:"center"
+  });
+
+  window.setTimeout(()=>{
+    card.classList.remove("selected-card");
+  },4000);
+}
+
+function renderMap(result){
+  if(!map || !markerLayer) return;
+
+  markerLayer.clearLayers();
+  markersByHotelId.clear();
+
+  const bounds = [];
+
+  result.forEach(h=>{
+    const pt = getHotelPoint(h);
+    if(!pt) return;
+
+    const marker = L.marker([pt.lat,pt.lng]).addTo(markerLayer);
+    markersByHotelId.set(String(h.id),marker);
+
+    marker.bindPopup(`
+      <strong>#${h.id ?? ""} ${safe(h.name || "未命名住宿")}</strong><br>
+      ${safe(h.area || "")}<br>
+      📍 地圖參考位置<br>
+      ${h.totalPrice != null ? "總價 " + money(h.totalPrice) : ""}
+    `);
+
+    marker.on("click",()=>{
+      focusCard(h.id);
+    });
+
+    bounds.push([pt.lat,pt.lng]);
+  });
+
+  if(bounds.length){
+    map.fitBounds(bounds,{padding:[28,28],maxZoom:15});
+  }else{
+    map.setView([35.155,129.115],11);
+  }
+}
+
+async function loadHotels(){
+  try{
+    const res = await fetch("hotels.json?t=" + Date.now(),{cache:"no-store"});
+
+    if(!res.ok){
+      throw new Error("HTTP " + res.status);
+    }
+
+    hotels = await res.json();
+
+    buildAreaButtons();
+    render();
+
+  }catch(err){
+    document.getElementById("list").innerHTML =
+      `<div class="empty">
+        讀不到 hotels.json。<br><br>
+        請確認 index.html 與 hotels.json 在同一個資料夾，
+        並透過 localhost 開啟。<br><br>
+        錯誤：${safe(err.message)}
+      </div>`;
+  }
+}
+
+function buildAreaButtons(){
+  const holder = document.getElementById("areaButtons");
+  const areas = [...new Set(hotels.map(h=>h.area).filter(Boolean))];
+
+  holder.innerHTML = areas
+    .map(a=>`<button data-area="${safe(a)}">${safe(a)}</button>`)
+    .join("");
+
+  document.querySelectorAll("[data-area]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      area = btn.dataset.area;
+
+      document.querySelectorAll("[data-area]").forEach(x=>{
+        x.classList.remove("active");
+      });
+
+      btn.classList.add("active");
+      render();
+    });
+  });
+}
+
+function sortedFiltered(){
+  let result = hotels.filter(h=>area==="全部" || h.area===area);
+  result = [...result];
+
+  if(sortMode==="priceAsc"){
+    result.sort((a,b)=>(a.totalPrice ?? Infinity)-(b.totalPrice ?? Infinity));
+  }else if(sortMode==="ratingDesc"){
+    result.sort((a,b)=>(b.rating ?? -Infinity)-(a.rating ?? -Infinity));
+  }else{
+    result.sort((a,b)=>(a.id ?? 0)-(b.id ?? 0));
+  }
+
+  return result;
+}
+
+function render(){
+  const result = sortedFiltered();
+
+  document.getElementById("count").textContent = `共 ${result.length} 間`;
+
+  const list = document.getElementById("list");
+
+  if(!result.length){
+    list.innerHTML = `<div class="empty">沒有符合條件的住宿。</div>`;
+    renderMap([]);
+    return;
+  }
+
+  list.innerHTML = result.map(h=>{
+    const hasMapPoint = !!getHotelPoint(h);
+
+    return `
+      <article class="card" data-hotel-id="${h.id}">
+
+        <div class="head">
+          <div>
+            <div class="name${hasMapPoint ? " map-name" : ""}"
+                 ${hasMapPoint ? `data-map-hotel-id="${h.id}" role="button" tabindex="0" title="在地圖上定位"` : ""}>#${h.id ?? ""} ${safe(h.name || "未命名住宿")}</div>
+            <div class="meta">📍 ${safe(h.area || "區域待補")}</div>
+          </div>
+
+          <div class="platform">${safe(h.platform || "平台未填")}</div>
+        </div>
+
+        ${h.title ? `<div class="title">${safe(h.title)}</div>` : ""}
+        ${h.desc ? `<div class="desc">${safe(h.desc)}</div>` : ""}
+
+        <div class="price-grid">
+          ${info("總價",money(h.totalPrice))}
+        </div>
+
+        <div class="info-grid">
+          ${info(
+            "評分",
+            h.rating != null
+              ? `${h.rating}${h.reviewCount != null ? `（${h.reviewCount} 則）` : ""}`
+              : null
+          )}
+          ${info("幾間臥室", h.bedrooms != null ? `${h.bedrooms} 間` : null)}
+          ${info("床數說明", h.bedDescription || (h.beds != null ? `${h.beds} 張` : null))}
+        </div>
+
+        <div class="amenity-grid">
+          ${amenity(h.hasKitchen,"廚房")}
+          ${amenity(h.hasLivingRoom,"客廳")}
+          ${amenity(h.hasElevator,"電梯")}
+        </div>
+
+        ${h.cancelPolicy ? `
+          <div class="section">
+            <div class="section-title">取消政策</div>
+            <div class="cancel">${safe(h.cancelPolicy)}</div>
+          </div>
+        ` : ""}
+
+        ${h.note ? `
+          <div class="section">
+            <div class="section-title">備註</div>
+            <div class="note">${safe(h.note)}</div>
+          </div>
+        ` : ""}
+
+        <div class="actions">
+          ${h.bookingUrl ? `
+            <a class="primary"
+               href="${safe(h.bookingUrl)}"
+               target="_blank"
+               rel="noopener noreferrer">
+              開啟訂房頁
+            </a>
+          ` : ""}
+
+          ${h.mapUrl ? `
+            <a href="${safe(h.mapUrl)}"
+               target="_blank"
+               rel="noopener noreferrer">
+              📍 Google Maps
+            </a>
+          ` : ""}
+        </div>
+
+      </article>
+    `;
+  }).join("");
+
+  renderMap(result);
+
+  list.querySelectorAll("[data-map-hotel-id]").forEach(el=>{
+    const locate = ()=>focusHotelOnMap(Number(el.dataset.mapHotelId));
+
+    el.addEventListener("click",locate);
+    el.addEventListener("keydown",e=>{
+      if(e.key === "Enter" || e.key === " "){
+        e.preventDefault();
+        locate();
+      }
+    });
+  });
+}
+
+document.getElementById("sort").addEventListener("change",e=>{
+  sortMode = e.target.value;
+  render();
+});
+
+document.getElementById("btnRefresh").addEventListener("click",loadHotels);
+
+initMap();
+loadHotels();
+</script>
+
+>>>>>>> dde353a (Initial Busan hotel site)
 </body>
 </html>
