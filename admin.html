@@ -106,17 +106,34 @@ textarea{min-height:82px;resize:vertical}
   margin-bottom:14px
 }
 .actions{
+  position:fixed;
+  right:22px;
+  bottom:22px;
+  z-index:9000;
   display:flex;
   gap:8px;
   flex-wrap:wrap;
-  border-top:1px solid var(--line);
-  padding-top:15px
+  padding:10px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 14px 34px rgba(15,23,42,.18);
+  backdrop-filter:blur(8px)
 }
+.actions button{white-space:nowrap}
+.form{padding-bottom:92px}
+
+#btnResolveMap{
+  background:#0f766e;
+  color:#fff;
+  border-color:#0f766e
+}
+#btnResolveMap:hover{background:#115e59;border-color:#115e59}
 
 .toast-container{
   position:fixed;
   right:18px;
-  bottom:18px;
+  bottom:92px;
   z-index:9999;
   display:flex;
   flex-direction:column;
@@ -152,6 +169,10 @@ textarea{min-height:82px;resize:vertical}
 @media(max-width:860px){
   .layout{grid-template-columns:1fr}
   .list{max-height:280px}
+  .actions{left:14px;right:14px;bottom:14px;justify-content:stretch}
+  .actions button{flex:1}
+  .form{padding-bottom:104px}
+  .toast-container{bottom:92px}
 }
 @media(max-width:560px){
   .grid{grid-template-columns:1fr}
@@ -213,16 +234,6 @@ textarea{min-height:82px;resize:vertical}
             <div class="field full">
               <label>住宿名稱 name</label>
               <input id="name">
-            </div>
-
-            <div class="field full">
-              <label>住宿副標題 title</label>
-              <input id="title">
-            </div>
-
-            <div class="field full">
-              <label>住宿簡介 desc</label>
-              <textarea id="desc"></textarea>
             </div>
 
             <div class="field">
@@ -404,7 +415,7 @@ let hotels = [];
 let editingId = null;
 
 const textFields = [
-  "platform","name","title","desc","area",
+  "platform","name","area",
   "bookingUrl","mapUrl","bedDescription",
   "cancelPolicy","image","note"
 ];
