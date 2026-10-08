@@ -584,101 +584,109 @@ async function resolveCurrentMap(){
 
 async function resolveAllMissingCoordinates(){
   const status = document.getElementById("status");
-  const oldHotels = hotels.map(h=>({...h}));
+  const selectedId = editingId;
+
   const targets = hotels.filter(h =>
-    h.mapUrl && (h.lat == null || h.lng == null || h.lat === "" || h.lng === "")
+    h.mapUrl &&
+    (
+      h.lat == null ||
+      h.lng == null ||
+      h.lat === "" ||
+      h.lng === ""
+    )
   );
 
   if(!targets.length){
     status.textContent = "沒有需要補座標的住宿。";
+    showToast("沒有需要補座標的住宿。","warning");
     return;
   }
 
   let success = 0;
   let failed = 0;
 
-  for(let i=0;i<targets.length;i++){
+  for(let i = 0; i < targets.length; i++){
     const h = targets[i];
-    status.textContent = `批次解析座標 ${i+1}/${targets.length}：#${h.id} ${h.name || "未命名"}`;
+
+    status.textContent =
+      `批次解析座標 ${i + 1}/${targets.length}：#${h.id} ${h.name || "未命名"}`;
 
     try{
+      // 先解析 Google Maps
       const point = await resolveMapUrl(h.mapUrl);
+
       h.lat = point.lat;
       h.lng = point.lng;
+
+      // 直接更新 D1
+      const res = await fetch(
+        `/api/admin/places/${h.id}`,
+        {
+          method:"PUT",
+          headers:{
+            "Content-Type":"application/json"
+          },
+          body:JSON.stringify({
+            ...h,
+            type:"hotel"
+          })
+        }
+      );
+
+      let data = {};
+
+      try{
+        data = await res.json();
+      }catch(e){}
+
+      if(res.status === 401){
+        throw new Error("登入已過期，請重新登入後台");
+      }
+
+      if(!res.ok || !data.ok){
+        throw new Error(
+          data.message || `HTTP ${res.status}`
+        );
+      }
+
       success++;
+
     }catch(err){
-      console.warn("座標解析失敗", h.id, h.mapUrl, err);
+      console.warn(
+        "座標處理失敗",
+        h.id,
+        h.mapUrl,
+        err
+      );
+
       failed++;
     }
   }
 
-  if(success){
-    try{
-      await writeHotels();
-    }catch(err){
-      hotels = oldHotels;
-      renderList();
-      throw err;
-    }
+  // 全部處理後重新從 D1 讀一次
+  await loadHotels();
+
+  // 如果原本正在編輯某筆，盡量重新選回來
+  if(
+    selectedId != null &&
+    hotels.some(h => Number(h.id) === Number(selectedId))
+  ){
+    editHotel(selectedId);
   }
 
-  renderList();
-  if(editingId != null) editHotel(editingId);
-  status.textContent = `座標處理完成：成功 ${success} 筆，失敗 ${failed} 筆`;
+  status.textContent =
+    `座標處理完成：成功 ${success} 筆，失敗 ${failed} 筆`;
+
+  if(failed === 0){
+    showToast(`批次補座標完成：${success} 筆`);
+  }else{
+    showToast(
+      `完成：成功 ${success} 筆，失敗 ${failed} 筆`,
+      "warning",
+      4200
+    );
+  }
 }
-
-async function verifyHotelsSaved(expected){
-  try{
-    const res = await fetch("hotels.json?t=" + Date.now(),{cache:"no-store"});
-    if(!res.ok) return false;
-    const saved = await res.json();
-    return JSON.stringify(saved) === JSON.stringify(expected);
-  }catch(err){
-    return false;
-  }
-}
-
-async function writeHotels(){
-  const status = document.getElementById("status");
-  status.textContent = "儲存中...";
-
-  let primaryError = null;
-
-  try{
-    const res = await fetch("/save-hotels",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify(hotels)
-    });
-
-    let data = {};
-    try{
-      data = await res.json();
-    }catch(e){}
-
-    if(!res.ok){
-      throw new Error(data.message || `HTTP ${res.status}`);
-    }
-
-    status.textContent = `已直接更新 hotels.json，共 ${hotels.length} 筆`;
-    return;
-
-  }catch(err){
-    primaryError = err;
-  }
-
-  // POST 的回應若在檔案寫入後中斷，舊版會誤報「儲存失敗」。
-  // 重新 GET 實際檔案；內容一致就視為成功。
-  if(await verifyHotelsSaved(hotels)){
-    status.textContent = `hotels.json 已更新（已重新讀取驗證），共 ${hotels.length} 筆`;
-    return;
-  }
-
-  throw primaryError || new Error("儲存失敗");
-}
-
 function renderList(){
   const el = document.getElementById("hotelList");
 
