@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>27Busan｜住宿比較</title>
+<title>27Busan｜旅遊清單</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
@@ -25,6 +25,8 @@ header p{margin:8px 0 0;color:#cbd5e1}
   margin:18px 0 14px;background:#fff;border:1px solid var(--line);border-radius:14px;
   padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center
 }
+.type-toolbar{margin-bottom:0}
+.area-toolbar{margin-top:10px}
 button,select{
   font:inherit;border:1px solid var(--line);border-radius:9px;background:#fff;padding:9px 11px
 }
@@ -64,8 +66,7 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .desc{font-size:14px;color:#4b5563;line-height:1.55}
 .price-grid,.info-grid,.amenity-grid{display:grid;gap:8px;margin-top:12px}
 .price-grid,.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.amenity-grid{ grid-template-columns:
-    repeat(auto-fit,minmax(120px,1fr));}
+.amenity-grid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
 .box{background:#f8fafc;border-radius:10px;padding:10px;min-width:0}
 .box small{display:block;color:var(--sub);font-size:11px;margin-bottom:4px}
 .box strong{font-size:16px}
@@ -95,6 +96,14 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .map-head span{font-size:12px;color:var(--sub);line-height:1.5}
 #map{height:680px;background:#e5e7eb}
 .map-note{padding:10px 13px;border-top:1px solid var(--line);font-size:12px;color:var(--sub);line-height:1.5}
+.map-type-icon{
+  width:38px;height:38px;display:grid;place-items:center;
+  background:#fff;border:2px solid #334155;border-radius:50%;
+  font-size:21px;box-shadow:0 3px 10px rgba(15,23,42,.25)
+}
+.map-type-icon.hotel{border-color:#2563eb}
+.map-type-icon.attraction{border-color:#16a34a}
+.map-type-icon.restaurant{border-color:#ea580c}
 .empty{padding:30px;text-align:center;color:var(--sub);background:#fff;border-radius:14px}
   .head-side{
   display:flex;
@@ -252,13 +261,12 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 }
 
 .podium-card{
-   min-width:0;
+  min-width:0;
   border:1px solid var(--line);
   border-radius:16px 16px 8px 8px;
   padding:16px 14px 0;
   text-align:center;
   overflow:hidden;
-
   display:flex;
   flex-direction:column;
   justify-content:flex-end;
@@ -293,7 +301,6 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   line-height:1.35;
   font-weight:800;
   word-break:break-word;
-
   min-height:44px;
   display:flex;
   align-items:center;
@@ -428,6 +435,7 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   }
 
   .podium-card{
+    min-height:0;
     display:grid;
     grid-template-columns:48px minmax(0,1fr) auto;
     grid-template-areas:
@@ -491,13 +499,20 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
 <header>
   <div class="wrap">
-    <h1>🛌🏻 27Busan 住宿比較</h1>
+    <h1>🚌 27Busan 旅遊清單</h1>
   </div>
 </header>
 
 <main class="wrap">
 
-  <div class="toolbar">
+  <div class="toolbar type-toolbar">
+    <button type="button" class="active" data-type="all">全部</button>
+    <button type="button" data-type="hotel">🛌 住宿</button>
+    <button type="button" data-type="attraction">📍 景點</button>
+    <button type="button" data-type="restaurant">🍽️ 餐廳</button>
+  </div>
+
+  <div class="toolbar area-toolbar">
     <button class="active" data-area="全部">全部</button>
     <div id="areaButtons" style="display:contents"></div>
     <span class="count" id="count"></span>
@@ -520,14 +535,14 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
     <aside class="map-panel">
       <div class="map-head">
-        <strong>🗺️ 住宿位置</strong>
-        <span>有填 lat / lng 的住宿才會顯示 Marker；點住宿標題可直接定位到地圖。</span>
+        <strong>🗺️ 地點位置</strong>
+        <span>🛌 住宿　📍 景點　🍽️ 餐廳｜有填 lat / lng 的地點才會顯示 Marker；點名稱可直接定位。</span>
       </div>
 
       <div id="map"></div>
 
       <div class="map-note">
-        若尚未提供精確地址，可填附近商家的座標作為參考位置。
+        「全部」可以同時比較住宿、景點、餐廳的相對位置；也可以用上方按鈕只看單一類型。
       </div>
     </aside>
 
@@ -640,7 +655,15 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 let hotels = [];
+let currentType = "all";
 let area = "全部";
+
+const typeConfig = {
+  all: {label:"全部", icon:"🚌"},
+  hotel: {label:"住宿", icon:"🛌"},
+  attraction: {label:"景點", icon:"📍"},
+  restaurant: {label:"餐廳", icon:"🍽️"}
+};
 let sortMode = "id";
 let map = null;
 let markerLayer = null;
@@ -657,12 +680,27 @@ function text(v,fallback="待補"){
   return v === null || v === undefined || v === "" ? fallback : v;
 }
 function amenity(value,label){
-  if(value === true) return `<div class="amenity yes">✓ ${label}：有</div>`;
-  if(value === false) return `<div class="amenity no">✕ ${label}：沒有</div>`;
-  return `<div class="amenity unknown">? ${label}：未確認</div>`;
+  if(value === true) return `<div class="amenity yes">✓ ${safe(label)}：有</div>`;
+  if(value === false) return `<div class="amenity no">✕ ${safe(label)}：沒有</div>`;
+  return `<div class="amenity unknown">? ${safe(label)}：未確認</div>`;
+}
+function amenityChoice(value,label,yesText="可以",noText="不可以"){
+  if(value === true) return `<div class="amenity yes">✓ ${safe(label)}：${safe(yesText)}</div>`;
+  if(value === false) return `<div class="amenity no">✕ ${safe(label)}：${safe(noText)}</div>`;
+  return `<div class="amenity unknown">? ${safe(label)}：未確認</div>`;
 }
 function info(label,value){
-  return `<div class="box"><small>${label}</small><strong>${text(value)}</strong></div>`;
+  return `<div class="box"><small>${safe(label)}</small><strong>${safe(text(value))}</strong></div>`;
+}
+function ratingText(h){
+  if(h.rating == null) return null;
+  return `${h.rating}${h.ratingMax != null ? ` / ${h.ratingMax}` : ""}${h.reviewCount != null ? `（${h.reviewCount} 則）` : ""}`;
+}
+function placeLabel(h){
+  return typeConfig[h.type]?.label || "地點";
+}
+function placeIcon(h){
+  return typeConfig[h.type]?.icon || "📌";
 }
 function safe(v){
   return String(v ?? "")
@@ -748,6 +786,19 @@ function focusCard(hotelId){
   },4000);
 }
 
+function getMapIcon(place){
+  const type = place.type || "hotel";
+  const emoji = typeConfig[type]?.icon || "📌";
+
+  return L.divIcon({
+    className:"",
+    html:`<div class="map-type-icon ${safe(type)}">${emoji}</div>`,
+    iconSize:[38,38],
+    iconAnchor:[19,19],
+    popupAnchor:[0,-22]
+  });
+}
+
 function renderMap(result){
   if(!map || !markerLayer) return;
 
@@ -760,13 +811,22 @@ function renderMap(result){
     const pt = getHotelPoint(h);
     if(!pt) return;
 
-    const marker = L.marker([pt.lat,pt.lng]).addTo(markerLayer);
+    const marker = L.marker(
+      [pt.lat,pt.lng],
+      {icon:getMapIcon(h)}
+    ).addTo(markerLayer);
+
     markersByHotelId.set(String(h.id),marker);
 
+    const detail =
+      h.type === "hotel"
+        ? (h.totalPrice != null ? `總價 ${money(h.totalPrice)}` : "")
+        : (h.placeCategory || h.priceInfo || "");
+
     marker.bindPopup(`
-      <strong>#${h.id ?? ""} ${safe(h.name || "未命名住宿")}</strong><br>
+      <strong>${placeIcon(h)} #${h.id ?? ""} ${safe(h.name || `未命名${placeLabel(h)}`)}</strong><br>
       ${safe(h.area || "")}<br>
-      ${h.totalPrice != null ? "總價 " + money(h.totalPrice) : ""}
+      ${safe(detail)}
     `);
 
     marker.on("click",()=>{
@@ -1098,6 +1158,7 @@ async function toggleVote(placeId){
   // 同票時照住宿 id
   // -------------------------
   const ranked = hotels
+    .filter(h=>h.type === "hotel")
     .map(h=>{
 
       const vote =
@@ -1280,7 +1341,7 @@ function closeRanking(){
 
 async function loadHotels(){
   try{
-    const res = await fetch("/api/places?type=hotel", {
+    const res = await fetch("/api/places", {
       cache:"no-store"
     });
 
@@ -1302,7 +1363,7 @@ async function loadHotels(){
   }catch(err){
     document.getElementById("list").innerHTML =
       `<div class="empty">
-        住宿資料讀取失敗。<br><br>
+        地點資料讀取失敗。<br><br>
         錯誤：${safe(err.message)}
       </div>`;
   }
@@ -1310,7 +1371,12 @@ async function loadHotels(){
 
 function buildAreaButtons(){
   const holder = document.getElementById("areaButtons");
-  const areas = [...new Set(hotels.map(h=>h.area).filter(Boolean))];
+
+  const source = currentType === "all"
+    ? hotels
+    : hotels.filter(h=>h.type === currentType);
+
+  const areas = [...new Set(source.map(h=>h.area).filter(Boolean))];
 
   holder.innerHTML = areas
     .map(a=>`<button data-area="${safe(a)}">${safe(a)}</button>`)
@@ -1331,7 +1397,11 @@ function buildAreaButtons(){
 }
 
 function sortedFiltered(){
-  let result = hotels.filter(h=>area==="全部" || h.area===area);
+  let result = hotels.filter(h=>{
+    const typeMatch = currentType === "all" || h.type === currentType;
+    const areaMatch = area === "全部" || h.area === area;
+    return typeMatch && areaMatch;
+  });
   result = [...result];
 
   if(sortMode==="priceAsc"){
@@ -1345,21 +1415,123 @@ function sortedFiltered(){
   return result;
 }
 
+function renderHotelDetails(h){
+  return `
+    <div class="price-grid">
+      ${info("總價",money(h.totalPrice))}
+      ${info("評分",ratingText(h))}
+    </div>
+
+    <div class="info-grid">
+      ${info("幾間臥室", h.bedrooms != null ? `${h.bedrooms} 間` : null)}
+      ${info("床數說明", h.bedDescription || (h.beds != null ? `${h.beds} 張` : null))}
+    </div>
+
+    <div class="amenity-grid">
+      ${amenity(h.hasKitchen,"廚房")}
+      ${amenity(h.hasLivingRoom,"客廳")}
+      ${amenity(h.hasElevator,"電梯")}
+      ${amenity(h.hasWasherDryer,"洗烘衣機")}
+      ${amenityChoice(h.hasLuggageStorage,"寄放行李")}
+    </div>
+
+    ${h.cancelPolicy ? `
+      <div class="section">
+        <div class="section-title">取消政策</div>
+        <div class="cancel">${safe(h.cancelPolicy)}</div>
+      </div>
+    ` : ""}
+  `;
+}
+
+function renderAttractionDetails(h){
+  return `
+    <div class="price-grid">
+      ${info("景點類型",h.placeCategory)}
+      ${info("評分",ratingText(h))}
+      ${info("門票 / 費用",h.priceInfo)}
+      ${info("建議停留時間",h.stayDuration)}
+    </div>
+
+    ${h.openingHours ? `
+      <div class="section">
+        <div class="section-title">營業時間</div>
+        <div class="note">${safe(h.openingHours)}</div>
+      </div>
+    ` : ""}
+
+    ${h.closedDays ? `
+      <div class="section">
+        <div class="section-title">公休日</div>
+        <div class="note">${safe(h.closedDays)}</div>
+      </div>
+    ` : ""}
+  `;
+}
+
+function renderRestaurantDetails(h){
+  return `
+    <div class="price-grid">
+      ${info("料理類型",h.placeCategory)}
+      ${info("評分",ratingText(h))}
+      ${info("價位",h.priceInfo)}
+      ${info("公休日",h.closedDays)}
+    </div>
+
+    <div class="amenity-grid">
+      ${amenityChoice(h.reservationAvailable,"訂位")}
+    </div>
+
+    ${h.openingHours ? `
+      <div class="section">
+        <div class="section-title">營業時間</div>
+        <div class="note">${safe(h.openingHours)}</div>
+      </div>
+    ` : ""}
+  `;
+}
+
+function renderPlaceDetails(h){
+  if(h.type === "attraction") return renderAttractionDetails(h);
+  if(h.type === "restaurant") return renderRestaurantDetails(h);
+  return renderHotelDetails(h);
+}
+
+function actionLabel(h){
+  if(h.type === "attraction") return "開啟購票 / 官方頁";
+  if(h.type === "restaurant") return "開啟訂位 / 店家頁";
+  return "開啟訂房頁";
+}
+
 function render(){
   const result = sortedFiltered();
 
-  document.getElementById("count").textContent = `共 ${result.length} 間`;
+  document.getElementById("count").textContent = `共 ${result.length} 筆`;
 
   const list = document.getElementById("list");
 
   if(!result.length){
-    list.innerHTML = `<div class="empty">沒有符合條件的住宿。</div>`;
+    const label = currentType === "all" ? "地點" : typeConfig[currentType].label;
+    list.innerHTML = `<div class="empty">沒有符合條件的${label}。</div>`;
     renderMap([]);
     return;
   }
 
   list.innerHTML = result.map(h=>{
     const hasMapPoint = !!getHotelPoint(h);
+    const label = placeLabel(h);
+
+    const voteHtml = h.type === "hotel" ? (()=>{
+      const vote = voteState.get(String(h.id)) || {count:0,votedByMe:false};
+      return `
+        <button
+          type="button"
+          class="vote-btn${vote.votedByMe ? " voted" : ""}"
+          data-vote-place-id="${h.id}">
+          ${vote.votedByMe ? "♥" : "♡"} ${vote.count}
+        </button>
+      `;
+    })() : "";
 
     return `
       <article class="card" data-hotel-id="${h.id}">
@@ -1367,69 +1539,17 @@ function render(){
         <div class="head">
           <div>
             <div class="name${hasMapPoint ? " map-name" : ""}"
-                 ${hasMapPoint ? `data-map-hotel-id="${h.id}" role="button" tabindex="0" title="在地圖上定位"` : ""}>#${h.id ?? ""} ${safe(h.name || "未命名住宿")}</div>
-            <div class="meta">📍 ${safe(h.area || "區域待補")}</div>
+                 ${hasMapPoint ? `data-map-hotel-id="${h.id}" role="button" tabindex="0" title="在地圖上定位"` : ""}>${placeIcon(h)} #${h.id ?? ""} ${safe(h.name || `未命名${label}`)}</div>
+            <div class="meta">📍 ${safe(h.area || "區域待補")} ・ ${safe(label)}</div>
           </div>
 
           <div class="head-side">
-
-  <div class="platform">
-    ${safe(h.platform || "平台未填")}
-  </div>
-
-  ${(()=>{
-    const vote =
-      voteState.get(String(h.id)) ||
-      {
-        count:0,
-        votedByMe:false
-      };
-
-    return `
-      <button
-        type="button"
-        class="vote-btn${vote.votedByMe ? " voted" : ""}"
-        data-vote-place-id="${h.id}">
-
-        ${vote.votedByMe ? "♥" : "♡"}
-        ${vote.count}
-
-      </button>
-    `;
-  })()}
-
-</div>
-        </div>
-
-        <div class="price-grid">
-          ${info("總價",money(h.totalPrice))}
-          ${info(
-            "評分",
-            h.rating != null
-              ? `${h.rating}${h.ratingMax != null ? ` / ${h.ratingMax}` : ""}${h.reviewCount != null ? `（${h.reviewCount} 則）` : ""}`
-              : null
-          )}
-        </div>
-
-        <div class="info-grid">
-          ${info("幾間臥室", h.bedrooms != null ? `${h.bedrooms} 間` : null)}
-          ${info("床數說明", h.bedDescription || (h.beds != null ? `${h.beds} 張` : null))}
-        </div>
-
-        <div class="amenity-grid">
-          ${amenity(h.hasKitchen,"廚房")}
-          ${amenity(h.hasLivingRoom,"客廳")}
-          ${amenity(h.hasElevator,"電梯")}
-          ${amenity(h.hasWasherDryer,"洗烘衣機")}
-          ${amenity(h.hasLuggageStorage,"寄放行李")}
-        </div>
-
-        ${h.cancelPolicy ? `
-          <div class="section">
-            <div class="section-title">取消政策</div>
-            <div class="cancel">${safe(h.cancelPolicy)}</div>
+            ${h.platform ? `<div class="platform">${safe(h.platform)}</div>` : ""}
+            ${voteHtml}
           </div>
-        ` : ""}
+        </div>
+
+        ${renderPlaceDetails(h)}
 
         ${h.note ? `
           <div class="section">
@@ -1444,7 +1564,7 @@ function render(){
                href="${safe(h.bookingUrl)}"
                target="_blank"
                rel="noopener noreferrer">
-              開啟訂房頁
+              ${actionLabel(h)}
             </a>
           ` : ""}
 
@@ -1474,19 +1594,13 @@ function render(){
       }
     });
   });
-  list
-  .querySelectorAll("[data-vote-place-id]")
-  .forEach(btn=>{
 
+  list.querySelectorAll("[data-vote-place-id]").forEach(btn=>{
     btn.addEventListener("click",async e=>{
       e.preventDefault();
       e.stopPropagation();
-
-      await toggleVote(
-        Number(btn.dataset.votePlaceId)
-      );
+      await toggleVote(Number(btn.dataset.votePlaceId));
     });
-
   });
 }
 
@@ -1523,6 +1637,37 @@ document
   });
 
 
+function updateVotingVisibility(){
+  const show = currentType === "all" || currentType === "hotel";
+  document.getElementById("btnVoter").style.display = show ? "" : "none";
+  document.getElementById("btnRanking").style.display = show ? "" : "none";
+}
+
+function switchType(type){
+  currentType = type;
+  area = "全部";
+
+  document.querySelectorAll("[data-type]").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.type === type);
+  });
+
+  buildAreaButtons();
+
+  document.querySelectorAll("[data-area]").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.area === "全部");
+  });
+
+  updateVotingVisibility();
+  render();
+}
+
+document.querySelectorAll("[data-type]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    switchType(btn.dataset.type);
+  });
+});
+
+
 async function init(){
   initMap();
 
@@ -1532,6 +1677,7 @@ async function init(){
   await loadHotels();
   await loadVotes();
 
+  updateVotingVisibility();
   render();
 }
 
