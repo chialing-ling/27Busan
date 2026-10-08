@@ -336,8 +336,75 @@ textarea{min-height:82px;resize:vertical}
 
           </div>
         </div>
+        <div
+  class="section"
+  id="placeExtraSection"
+  style="display:none"
+>
+  <div class="section-title" id="placeExtraTitle">
+    景點 / 餐廳資訊
+  </div>
 
-        <div class="section">
+  <div class="grid">
+
+    <div class="field">
+      <label id="placeCategoryLabel">
+        類型 placeCategory
+      </label>
+      <input id="placeCategory">
+    </div>
+
+    <div class="field">
+      <label id="priceInfoLabel">
+        費用 / 價位 priceInfo
+      </label>
+      <input id="priceInfo">
+    </div>
+
+    <div class="field full">
+      <label>營業時間 openingHours</label>
+      <textarea
+        id="openingHours"
+        placeholder="例如：09:00～18:00"
+      ></textarea>
+    </div>
+
+    <div class="field full">
+      <label>公休日 closedDays</label>
+      <input
+        id="closedDays"
+        placeholder="例如：每週一 / 無固定公休"
+      >
+    </div>
+
+    <div
+      class="field"
+      id="stayDurationField"
+    >
+      <label>建議停留時間 stayDuration</label>
+      <input
+        id="stayDuration"
+        placeholder="例如：1～2 小時"
+      >
+    </div>
+
+    <div
+      class="field"
+      id="reservationAvailableField"
+    >
+      <label>是否可訂位 reservationAvailable</label>
+
+      <select id="reservationAvailable">
+        <option value="">未確認</option>
+        <option value="true">可以</option>
+        <option value="false">不可以</option>
+      </select>
+    </div>
+
+  </div>
+</div>
+
+        <div class="section" id="hotelRoomSection">
           <div class="section-title">房型資訊</div>
 
           <div class="grid">
@@ -399,7 +466,7 @@ textarea{min-height:82px;resize:vertical}
           </div>
         </div>
 
-        <div class="section">
+        <div class="section" id="hotelPriceSection">
           <div class="section-title">價格與取消政策</div>
 
           <div class="grid">
@@ -483,9 +550,21 @@ const typeConfig = {
 };
 
 const textFields = [
-  "platform","name","area",
-  "bookingUrl","mapUrl","bedDescription",
-  "cancelPolicy","image","note"
+  "platform",
+  "name",
+  "area",
+  "bookingUrl",
+  "mapUrl",
+  "bedDescription",
+  "cancelPolicy",
+  "image",
+  "note",
+
+  "placeCategory",
+  "priceInfo",
+  "openingHours",
+  "closedDays",
+  "stayDuration"
 ];
 
 const numberFields = [
@@ -499,7 +578,8 @@ const booleanFields = [
   "hasLivingRoom",
   "hasElevator",
   "hasWasherDryer",
-  "hasLuggageStorage"
+  "hasLuggageStorage",
+  "reservationAvailable"
 ];
 
 const arrayFields = [
@@ -1031,6 +1111,72 @@ async function switchType(type){
   editingId = null;
 
   const config = typeConfig[type];
+  const isHotel = type === "hotel";
+const isAttraction = type === "attraction";
+const isRestaurant = type === "restaurant";
+
+document.getElementById(
+  "hotelRoomSection"
+).style.display =
+  isHotel ? "" : "none";
+
+document.getElementById(
+  "hotelPriceSection"
+).style.display =
+  isHotel ? "" : "none";
+
+document.getElementById(
+  "placeExtraSection"
+).style.display =
+  isHotel ? "none" : "";
+
+document.getElementById(
+  "stayDurationField"
+).style.display =
+  isAttraction ? "" : "none";
+
+document.getElementById(
+  "reservationAvailableField"
+).style.display =
+  isRestaurant ? "" : "none";
+
+
+if(isAttraction){
+
+  document.getElementById(
+    "placeExtraTitle"
+  ).textContent =
+    "景點資訊";
+
+  document.getElementById(
+    "placeCategoryLabel"
+  ).textContent =
+    "景點類型 placeCategory";
+
+  document.getElementById(
+    "priceInfoLabel"
+  ).textContent =
+    "門票 / 費用 priceInfo";
+}
+
+
+if(isRestaurant){
+
+  document.getElementById(
+    "placeExtraTitle"
+  ).textContent =
+    "餐廳資訊";
+
+  document.getElementById(
+    "placeCategoryLabel"
+  ).textContent =
+    "料理類型 placeCategory";
+
+  document.getElementById(
+    "priceInfoLabel"
+  ).textContent =
+    "價位 priceInfo";
+}
 
   document
     .getElementById("btnHotelMode")
