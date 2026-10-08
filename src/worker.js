@@ -131,6 +131,101 @@ function loginPage(error = "") {
   });
 }
 
+
+// =========================
+// 投票者身分 Cookie
+// =========================
+async function signVoterId(voterId, secret) {
+  if (!secret) {
+    throw new Error("VOTER_SESSION_SECRET 未設定");
+  }
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    {
+      name: "HMAC",
+      hash: "SHA-256"
+    },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(String(voterId))
+  );
+
+  return [...new Uint8Array(signature)]
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function getCookie(request, name) {
+  const cookie = request.headers.get("Cookie") || "";
+
+  for (const part of cookie.split(";")) {
+    const [key, ...valueParts] = part.trim().split("=");
+
+    if (key === name) {
+      return valueParts.join("=");
+    }
+  }
+
+  return null;
+}
+
+async function createVoterSession(voterId, env) {
+  const signature = await signVoterId(
+    voterId,
+    env.VOTER_SESSION_SECRET
+  );
+
+  return `${voterId}.${signature}`;
+}
+
+async function getCurrentVoter(request, env) {
+  const token = getCookie(request, "voter_session");
+
+  if (!token) {
+    return null;
+  }
+
+  const parts = token.split(".");
+
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const voterId = Number(parts[0]);
+  const receivedSignature = parts[1];
+
+  if (!Number.isInteger(voterId) || voterId <= 0) {
+    return null;
+  }
+
+  const expectedSignature = await signVoterId(
+    voterId,
+    env.VOTER_SESSION_SECRET
+  );
+
+  if (receivedSignature !== expectedSignature) {
+    return null;
+  }
+
+  const voter = await env.DB.prepare(`
+    SELECT id, name
+    FROM voters
+    WHERE id = ?
+      AND is_active = 1
+  `)
+    .bind(voterId)
+    .first();
+
+  return voter || null;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -819,6 +914,149 @@ if (!point) {
     );
   }
 }
+
+
+    // -------------------------
+    // 取得可投票的朋友名單
+    // -------------------------
+    if (
+      url.pathname === "/api/voters" &&
+      request.method === "GET"
+    ) {
+      try {
+        const result = await env.DB.prepare(`
+          SELECT id, name
+          FROM voters
+          WHERE is_active = 1
+          ORDER BY id ASC
+        `).all();
+
+        return Response.json({
+          ok: true,
+          data: result.results
+        });
+      } catch (err) {
+        return Response.json(
+          {
+            ok: false,
+            message: err.message
+          },
+          {
+            status: 500
+          }
+        );
+      }
+    }
+
+    // -------------------------
+    // 選擇目前投票身分
+    // -------------------------
+    if (
+      url.pathname === "/api/voter/select" &&
+      request.method === "POST"
+    ) {
+      try {
+        const body = await request.json();
+        const voterId = Number(body.voterId);
+
+        if (!Number.isInteger(voterId) || voterId <= 0) {
+          return Response.json(
+            {
+              ok: false,
+              message: "請選擇有效的名字"
+            },
+            {
+              status: 400
+            }
+          );
+        }
+
+        const voter = await env.DB.prepare(`
+          SELECT id, name
+          FROM voters
+          WHERE id = ?
+            AND is_active = 1
+        `)
+          .bind(voterId)
+          .first();
+
+        if (!voter) {
+          return Response.json(
+            {
+              ok: false,
+              message: "找不到這個投票成員"
+            },
+            {
+              status: 404
+            }
+          );
+        }
+
+        const token = await createVoterSession(
+          voter.id,
+          env
+        );
+
+        return Response.json(
+          {
+            ok: true,
+            voter
+          },
+          {
+            headers: {
+              "Set-Cookie":
+                `voter_session=${token}; ` +
+                `Path=/; ` +
+                `HttpOnly; ` +
+                `Secure; ` +
+                `SameSite=Lax; ` +
+                `Max-Age=15552000`
+            }
+          }
+        );
+      } catch (err) {
+        return Response.json(
+          {
+            ok: false,
+            message: err.message
+          },
+          {
+            status: 500
+          }
+        );
+      }
+    }
+
+    // -------------------------
+    // 查看目前投票身分
+    // -------------------------
+    if (
+      url.pathname === "/api/voter/me" &&
+      request.method === "GET"
+    ) {
+      try {
+        const voter = await getCurrentVoter(
+          request,
+          env
+        );
+
+        return Response.json({
+          ok: true,
+          voter
+        });
+      } catch (err) {
+        return Response.json(
+          {
+            ok: false,
+            message: err.message
+          },
+          {
+            status: 500
+          }
+        );
+      }
+    }
+
     // -------------------------
     // 測試 D1
     // -------------------------
