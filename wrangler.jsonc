@@ -1,0 +1,21 @@
+{
+  "name": "27busan",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-08",
+
+  "assets": {
+    "directory": "./",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "27busan-db",
+      "database_id": "09b2c8cb-0fc7-4bb0-addf-c59574f1ca47"
+    }
+  ]
+}
