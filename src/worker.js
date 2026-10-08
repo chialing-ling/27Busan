@@ -134,10 +134,12 @@ function loginPage(error = "") {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/admin/check") {
+    if (url.pathname === "/api/check-secret") {
   return Response.json({
     ok: true,
-    hasAdminPassword: Boolean(env.ADMIN_PASSWORD)
+    hasAdminPassword:
+      typeof env.ADMIN_PASSWORD === "string" &&
+      env.ADMIN_PASSWORD.length > 0
   });
 }
     // -------------------------
