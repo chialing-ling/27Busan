@@ -479,72 +479,168 @@ if (
       );
     }
 
-    let target;
+    // 從網址或 HTML 文字中找經緯度
+    function extractCoords(text) {
+      if (!text) return null;
 
-    try {
-      target = new URL(rawUrl);
-    } catch {
+      let value = String(text);
+
+      // Google 頁面裡可能有 escaped 字元
+      value = value
+        .replaceAll("\\u003d", "=")
+        .replaceAll("\\u0026", "&")
+        .replaceAll("\\/", "/");
+
+      try {
+        value = decodeURIComponent(value);
+      } catch {}
+
+      // Google Maps data 格式
+      let match = value.match(
+        /!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/
+      );
+
+      if (match) {
+        return {
+          lat: Number(match[1]),
+          lng: Number(match[2]),
+          source: "place"
+        };
+      }
+
+      // @35.123,129.123 格式
+      match = value.match(
+        /@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/
+      );
+
+      if (match) {
+        return {
+          lat: Number(match[1]),
+          lng: Number(match[2]),
+          source: "viewport"
+        };
+      }
+
+      // query=35.123,129.123 等格式
+      match = value.match(
+        /(?:query|q|ll|center)=(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/i
+      );
+
+      if (match) {
+        return {
+          lat: Number(match[1]),
+          lng: Number(match[2]),
+          source: "query"
+        };
+      }
+
+      return null;
+    }
+
+    function allowedGoogleUrl(value) {
+      let parsed;
+
+      try {
+        parsed = new URL(value);
+      } catch {
+        return false;
+      }
+
+      if (parsed.protocol !== "https:") {
+        return false;
+      }
+
+      const host = parsed.hostname.toLowerCase();
+
+      return (
+        host === "maps.app.goo.gl" ||
+        host === "goo.gl" ||
+        /(^|\.)google\.[a-z.]+$/i.test(host)
+      );
+    }
+
+    if (!allowedGoogleUrl(rawUrl)) {
       return Response.json(
-        { ok: false, message: "網址格式不正確" },
+        {
+          ok: false,
+          message: "只接受 Google Maps HTTPS 網址"
+        },
         { status: 400 }
       );
     }
 
-    if (target.protocol !== "https:") {
-      return Response.json(
-        { ok: false, message: "只接受 HTTPS 網址" },
-        { status: 400 }
-      );
-    }
+    let currentUrl = rawUrl;
 
-    const host = target.hostname.toLowerCase();
+    // 最多追蹤 8 次 redirect
+    for (let i = 0; i < 8; i++) {
 
-    const isGoogleMap =
-      host === "maps.app.goo.gl" ||
-      host === "goo.gl" ||
-      /(^|\.)google\.[a-z.]+$/i.test(host);
+      // 每一層網址都先檢查一次
+      const fromUrl = extractCoords(currentUrl);
 
-    if (!isGoogleMap) {
-      return Response.json(
-        { ok: false, message: "只接受 Google Maps 網址" },
-        { status: 400 }
-      );
-    }
+      if (fromUrl) {
+        return Response.json({
+          ok: true,
+          ...fromUrl
+        });
+      }
 
-    const res = await fetch(rawUrl, {
-      redirect: "follow"
-    });
-
-    const finalUrl = res.url || rawUrl;
-
-    let decoded = finalUrl;
-
-    try {
-      decoded = decodeURIComponent(finalUrl);
-    } catch {}
-
-    let match =
-      decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
-
-    if (match) {
-      return Response.json({
-        ok: true,
-        lat: Number(match[1]),
-        lng: Number(match[2]),
-        source: "place"
+      const res = await fetch(currentUrl, {
+        redirect: "manual",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+        }
       });
-    }
 
-    match =
-      decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+      // HTTP Redirect
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("Location");
 
-    if (match) {
-      return Response.json({
-        ok: true,
-        lat: Number(match[1]),
-        lng: Number(match[2]),
-        source: "viewport"
-      });
+        if (!location) {
+          break;
+        }
+
+        const nextUrl = new URL(location, currentUrl).href;
+
+        // 每一次跳轉都重新驗證，避免跳到非 Google 網址
+        if (!allowedGoogleUrl(nextUrl)) {
+          return Response.json(
+            {
+              ok: false,
+              message: "Google Maps 導向了不允許的網址"
+            },
+            { status: 400 }
+          );
+        }
+
+        currentUrl = nextUrl;
+        continue;
+      }
+
+      // 再檢查實際 response URL
+      const fromFinalUrl = extractCoords(res.url);
+
+      if (fromFinalUrl) {
+        return Response.json({
+          ok: true,
+          ...fromFinalUrl
+        });
+      }
+
+      // 有些 Google Maps 網址不會把座標放在網址，
+      // 改從回傳 HTML 裡尋找
+      const html = await res.text();
+
+      const fromHtml = extractCoords(html);
+
+      if (fromHtml) {
+        return Response.json({
+          ok: true,
+          ...fromHtml
+        });
+      }
+
+      break;
     }
 
     return Response.json(
