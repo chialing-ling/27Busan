@@ -1056,7 +1056,192 @@ if (!point) {
         );
       }
     }
+    // -------------------------
+// 取得投票統計
+// -------------------------
+if (
+  url.pathname === "/api/votes" &&
+  request.method === "GET"
+) {
+  try {
+    const type = url.searchParams.get("type");
 
+    const voter = await getCurrentVoter(request, env);
+    const voterId = voter?.id ?? -1;
+
+    let query = `
+      SELECT
+        p.id AS place_id,
+        COUNT(v.id) AS vote_count,
+        MAX(
+          CASE
+            WHEN v.voter_id = ? THEN 1
+            ELSE 0
+          END
+        ) AS voted_by_me
+      FROM places p
+      LEFT JOIN votes v
+        ON v.place_id = p.id
+    `;
+
+    const params = [voterId];
+
+    if (type) {
+      query += ` WHERE p.type = ?`;
+      params.push(type);
+    }
+
+    query += `
+      GROUP BY p.id
+      ORDER BY p.id ASC
+    `;
+
+    const result = await env.DB
+      .prepare(query)
+      .bind(...params)
+      .all();
+
+    return Response.json({
+      ok: true,
+      voter,
+      data: result.results.map(row => ({
+        placeId: row.place_id,
+        count: Number(row.vote_count || 0),
+        votedByMe: Boolean(row.voted_by_me)
+      }))
+    });
+
+  } catch (err) {
+    return Response.json(
+      {
+        ok: false,
+        message: err.message
+      },
+      {
+        status: 500
+      }
+    );
+  }
+}
+    // -------------------------
+// 投票 / 取消投票
+// -------------------------
+if (
+  /^\/api\/votes\/\d+$/.test(url.pathname) &&
+  request.method === "POST"
+) {
+  try {
+    const voter = await getCurrentVoter(
+      request,
+      env
+    );
+
+    if (!voter) {
+      return Response.json(
+        {
+          ok: false,
+          needsVoter: true,
+          message: "請先選擇你的名字"
+        },
+        {
+          status: 401
+        }
+      );
+    }
+
+    const placeId = Number(
+      url.pathname.split("/").pop()
+    );
+
+    const place = await env.DB.prepare(`
+      SELECT id
+      FROM places
+      WHERE id = ?
+    `)
+      .bind(placeId)
+      .first();
+
+    if (!place) {
+      return Response.json(
+        {
+          ok: false,
+          message: "找不到這個住宿"
+        },
+        {
+          status: 404
+        }
+      );
+    }
+
+    const existing = await env.DB.prepare(`
+      SELECT id
+      FROM votes
+      WHERE voter_id = ?
+        AND place_id = ?
+    `)
+      .bind(voter.id, placeId)
+      .first();
+
+    let voted;
+
+    if (existing) {
+
+      // 已投過 → 取消
+      await env.DB.prepare(`
+        DELETE FROM votes
+        WHERE voter_id = ?
+          AND place_id = ?
+      `)
+        .bind(voter.id, placeId)
+        .run();
+
+      voted = false;
+
+    } else {
+
+      // 尚未投 → 投票
+      await env.DB.prepare(`
+        INSERT INTO votes (
+          voter_id,
+          place_id
+        )
+        VALUES (?, ?)
+      `)
+        .bind(voter.id, placeId)
+        .run();
+
+      voted = true;
+    }
+
+    const countRow = await env.DB.prepare(`
+      SELECT COUNT(*) AS count
+      FROM votes
+      WHERE place_id = ?
+    `)
+      .bind(placeId)
+      .first();
+
+    return Response.json({
+      ok: true,
+      voter,
+      placeId,
+      voted,
+      count: Number(countRow?.count || 0)
+    });
+
+  } catch (err) {
+    return Response.json(
+      {
+        ok: false,
+        message: err.message
+      },
+      {
+        status: 500
+      }
+    );
+  }
+}
+    
     // -------------------------
     // 測試 D1
     // -------------------------
