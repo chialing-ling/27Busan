@@ -134,14 +134,7 @@ function loginPage(error = "") {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/check-secret") {
-  return Response.json({
-    ok: true,
-    hasAdminPassword:
-      typeof env.ADMIN_PASSWORD === "string" &&
-      env.ADMIN_PASSWORD.length > 0
-  });
-}
+    
     // -------------------------
     // 管理員登入
     // -------------------------
