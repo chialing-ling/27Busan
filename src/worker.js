@@ -315,7 +315,154 @@ if (
     );
   }
 }
+// -------------------------
+// 修改地點
+// -------------------------
+if (
+  url.pathname.startsWith("/api/admin/places/") &&
+  request.method === "PUT"
+) {
+  try {
+    const id = Number(url.pathname.split("/").pop());
 
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json(
+        { ok: false, message: "無效的 id" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+
+    if (!body.name || !String(body.name).trim()) {
+      return Response.json(
+        { ok: false, message: "名稱不能空白" },
+        { status: 400 }
+      );
+    }
+
+    const emptyToNull = value => {
+      if (value === undefined || value === null || value === "") {
+        return null;
+      }
+      return value;
+    };
+
+    const numberOrNull = value => {
+      if (value === undefined || value === null || value === "") {
+        return null;
+      }
+
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const boolOrNull = value => {
+      if (value === undefined || value === null || value === "") {
+        return null;
+      }
+
+      return value ? 1 : 0;
+    };
+
+    const result = await env.DB.prepare(`
+      UPDATE places
+      SET
+        type = ?,
+        name = ?,
+        area = ?,
+        platform = ?,
+        url = ?,
+        map_url = ?,
+        lat = ?,
+        lng = ?,
+        rating = ?,
+        rating_max = ?,
+        review_count = ?,
+        total_price = ?,
+        bedrooms = ?,
+        bed_description = ?,
+        has_kitchen = ?,
+        has_living_room = ?,
+        has_elevator = ?,
+        cancel_policy = ?,
+        note = ?,
+        image_url = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(
+      body.type || "hotel",
+      String(body.name).trim(),
+      emptyToNull(body.area),
+      emptyToNull(body.platform),
+      emptyToNull(body.bookingUrl),
+      emptyToNull(body.mapUrl),
+      numberOrNull(body.lat),
+      numberOrNull(body.lng),
+      numberOrNull(body.rating),
+      numberOrNull(body.ratingMax),
+      numberOrNull(body.reviewCount),
+      numberOrNull(body.totalPrice),
+      numberOrNull(body.bedrooms),
+      emptyToNull(body.bedDescription),
+      boolOrNull(body.hasKitchen),
+      boolOrNull(body.hasLivingRoom),
+      boolOrNull(body.hasElevator),
+      emptyToNull(body.cancelPolicy),
+      emptyToNull(body.note),
+      emptyToNull(body.image),
+      id
+    ).run();
+
+    return Response.json({
+      ok: true,
+      changes: result.meta?.changes ?? 0
+    });
+
+  } catch (err) {
+    return Response.json(
+      { ok: false, message: err.message },
+      { status: 500 }
+    );
+  }
+}
+
+// -------------------------
+// 刪除地點
+// -------------------------
+if (
+  url.pathname.startsWith("/api/admin/places/") &&
+  request.method === "DELETE"
+) {
+  try {
+    const id = Number(url.pathname.split("/").pop());
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return Response.json(
+        { ok: false, message: "無效的 id" },
+        { status: 400 }
+      );
+    }
+
+    const result = await env.DB
+      .prepare("DELETE FROM places WHERE id = ?")
+      .bind(id)
+      .run();
+
+    return Response.json({
+      ok: true,
+      changes: result.meta?.changes ?? 0
+    });
+
+  } catch (err) {
+    return Response.json(
+      { ok: false, message: err.message },
+      { status: 500 }
+    );
+  }
+}
+
+    
     // -------------------------
     // 測試 D1
     // -------------------------
