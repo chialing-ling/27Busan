@@ -134,7 +134,12 @@ function loginPage(error = "") {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-
+    if (url.pathname === "/api/admin/check") {
+  return Response.json({
+    ok: true,
+    hasAdminPassword: Boolean(env.ADMIN_PASSWORD)
+  });
+}
     // -------------------------
     // 管理員登入
     // -------------------------
