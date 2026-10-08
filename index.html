@@ -124,14 +124,6 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   <div class="toolbar">
     <button class="active" data-area="全部">全部</button>
     <div id="areaButtons" style="display:contents"></div>
-
-    <select id="sort">
-      <option value="id">依編號</option>
-      <option value="priceAsc">總價：低 → 高</option>
-      <option value="ratingDesc">評分：高 → 低</option>
-    </select>
-
-    <button id="btnRefresh">重新讀取 hotels.json</button>
     <span class="count" id="count"></span>
   </div>
 
@@ -148,7 +140,7 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
       <div id="map"></div>
 
       <div class="map-note">
-        Airbnb 若尚未提供精確地址，可填附近商家的座標作為參考位置。
+        若尚未提供精確地址，可填附近商家的座標作為參考位置。
       </div>
     </aside>
 
@@ -300,13 +292,21 @@ function renderMap(result){
 
 async function loadHotels(){
   try{
-    const res = await fetch("hotels.json?t=" + Date.now(),{cache:"no-store"});
+    const res = await fetch("/api/places?type=hotel", {
+      cache:"no-store"
+    });
 
     if(!res.ok){
       throw new Error("HTTP " + res.status);
     }
 
-    hotels = await res.json();
+    const payload = await res.json();
+
+    if(!payload.ok || !Array.isArray(payload.data)){
+      throw new Error("API 回傳格式錯誤");
+    }
+
+    hotels = payload.data;
 
     buildAreaButtons();
     render();
@@ -314,9 +314,7 @@ async function loadHotels(){
   }catch(err){
     document.getElementById("list").innerHTML =
       `<div class="empty">
-        讀不到 hotels.json。<br><br>
-        請確認 index.html 與 hotels.json 在同一個資料夾，
-        並透過 localhost 開啟。<br><br>
+        住宿資料讀取失敗。<br><br>
         錯誤：${safe(err.message)}
       </div>`;
   }
@@ -399,7 +397,7 @@ function render(){
           ${info(
             "評分",
             h.rating != null
-              ? `${h.rating}${h.reviewCount != null ? `（${h.reviewCount} 則）` : ""}`
+              ? `${h.rating}${h.ratingMax != null ? ` / ${h.ratingMax}` : ""}${h.reviewCount != null ? `（${h.reviewCount} 則）` : ""}`
               : null
           )}
           ${info("幾間臥室", h.bedrooms != null ? `${h.bedrooms} 間` : null)}
