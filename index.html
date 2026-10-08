@@ -177,7 +177,48 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   color:#fff;
   border-color:var(--primary);
 }
+.ranking-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:11px 0;
+  border-bottom:1px solid var(--line);
+}
 
+.ranking-item:last-child{
+  border-bottom:0;
+}
+
+.ranking-rank{
+  width:34px;
+  flex:0 0 34px;
+  font-size:20px;
+  font-weight:800;
+  text-align:center;
+}
+
+.ranking-info{
+  flex:1;
+  min-width:0;
+}
+
+.ranking-name{
+  font-weight:800;
+  line-height:1.4;
+}
+
+.ranking-area{
+  margin-top:3px;
+  color:var(--sub);
+  font-size:12px;
+}
+
+.ranking-votes{
+  white-space:nowrap;
+  color:#be123c;
+  font-weight:800;
+}
+  
 @media(max-width:1050px){
   .layout{grid-template-columns:1fr}
   .map-panel{position:static;order:-1}
@@ -212,6 +253,11 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   type="button">
   ♡ 我要投票
 </button>
+    <button
+  id="btnRanking"
+  type="button">
+  🏆 投票排行
+</button>
   </div>
 
   <section class="layout">
@@ -237,7 +283,31 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   class="voter-modal-backdrop"
   id="voterModalBackdrop"
   aria-hidden="true">
+<div
+  class="voter-modal-backdrop"
+  id="rankingModalBackdrop"
+  aria-hidden="true">
 
+  <div class="voter-modal">
+
+    <h2>🏆 住宿投票排行</h2>
+
+    <p>
+      目前大家最想住的住宿
+    </p>
+
+    <div id="rankingList"></div>
+
+    <div class="voter-modal-actions">
+      <button
+        type="button"
+        id="btnRankingClose">
+        關閉
+      </button>
+    </div>
+
+  </div>
+</div>
   <div class="voter-modal">
 
     <h2>你是誰？</h2>
@@ -269,6 +339,8 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
     </div>
 
   </div>
+
+  
 </div>
   
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -718,6 +790,85 @@ async function toggleVote(placeId){
     );
   }
 }
+  function openRanking(){
+  const list =
+    document.getElementById("rankingList");
+
+  const ranked = hotels
+    .map(h => {
+      const vote =
+        voteState.get(String(h.id)) ||
+        {
+          count:0,
+          votedByMe:false
+        };
+
+      return {
+        ...h,
+        voteCount:Number(vote.count || 0)
+      };
+    })
+    .sort((a,b)=>{
+      if(b.voteCount !== a.voteCount){
+        return b.voteCount - a.voteCount;
+      }
+
+      return Number(a.id) - Number(b.id);
+    });
+
+  if(!ranked.length){
+    list.innerHTML =
+      '<div class="empty">目前沒有住宿資料</div>';
+  }else{
+    list.innerHTML = ranked
+      .map((h,index)=>{
+
+        let rank = index + 1;
+
+        if(index === 0) rank = "🥇";
+        if(index === 1) rank = "🥈";
+        if(index === 2) rank = "🥉";
+
+        return `
+          <div class="ranking-item">
+
+            <div class="ranking-rank">
+              ${rank}
+            </div>
+
+            <div class="ranking-info">
+
+              <div class="ranking-name">
+                #${h.id} ${safe(h.name || "未命名住宿")}
+              </div>
+
+              <div class="ranking-area">
+                ${safe(h.area || "區域待補")}
+              </div>
+
+            </div>
+
+            <div class="ranking-votes">
+              ♥ ${h.voteCount}
+            </div>
+
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  document
+    .getElementById("rankingModalBackdrop")
+    .classList.add("show");
+}
+
+
+function closeRanking(){
+  document
+    .getElementById("rankingModalBackdrop")
+    .classList.remove("show");
+}
 
 async function loadHotels(){
   try{
@@ -935,6 +1086,18 @@ document
     openVoterModal();
   });
 
+  document
+  .getElementById("btnRanking")
+  .addEventListener("click",()=>{
+    openRanking();
+  });
+
+
+document
+  .getElementById("btnRankingClose")
+  .addEventListener("click",()=>{
+    closeRanking();
+  });
 
 document
   .getElementById("btnVoterCancel")
