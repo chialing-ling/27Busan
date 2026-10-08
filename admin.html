@@ -55,7 +55,29 @@ button.danger{color:var(--danger)}
   border-bottom:1px solid var(--line);
   font-weight:700
 }
-.list{max-height:calc(100vh - 190px);overflow:auto}
+.layout > aside.panel{
+  position:sticky;
+  top:14px;
+  align-self:start;
+
+  max-height:calc(100vh - 28px);
+
+  display:flex;
+  flex-direction:column;
+}
+
+/* 左邊標題固定 */
+.layout > aside.panel .panel-head{
+  flex:0 0 auto;
+}
+
+/* 清單自己滾動 */
+.layout > aside.panel .list{
+  flex:1;
+  min-height:0;
+  max-height:calc(100vh - 75px);
+  overflow-y:auto;
+}
 .item{
   padding:12px 14px;
   border-bottom:1px solid var(--line);
@@ -173,6 +195,15 @@ textarea{min-height:82px;resize:vertical}
   .actions button{flex:1}
   .form{padding-bottom:104px}
   .toast-container{bottom:92px}
+  .layout > aside.panel{
+  position:static;
+  max-height:none;
+  display:block;
+}
+
+.layout > aside.panel .list{
+  max-height:280px;
+}
 }
 @media(max-width:560px){
   .grid{grid-template-columns:1fr}
