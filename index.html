@@ -63,8 +63,7 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .title{margin:12px 0 4px;font-weight:700}
 .desc{font-size:14px;color:#4b5563;line-height:1.55}
 .price-grid,.info-grid,.amenity-grid{display:grid;gap:8px;margin-top:12px}
-.price-grid{grid-template-columns:1fr}
-.info-grid{grid-template-columns:1fr}
+.price-grid,.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .amenity-grid{grid-template-columns:repeat(3,1fr)}
 .box{background:#f8fafc;border-radius:10px;padding:10px;min-width:0}
 .box small{display:block;color:var(--sub);font-size:11px;margin-bottom:4px}
@@ -272,7 +271,6 @@ function renderMap(result){
     marker.bindPopup(`
       <strong>#${h.id ?? ""} ${safe(h.name || "未命名住宿")}</strong><br>
       ${safe(h.area || "")}<br>
-      📍 地圖參考位置<br>
       ${h.totalPrice != null ? "總價 " + money(h.totalPrice) : ""}
     `);
 
@@ -386,20 +384,17 @@ function render(){
           <div class="platform">${safe(h.platform || "平台未填")}</div>
         </div>
 
-        ${h.title ? `<div class="title">${safe(h.title)}</div>` : ""}
-        ${h.desc ? `<div class="desc">${safe(h.desc)}</div>` : ""}
-
         <div class="price-grid">
           ${info("總價",money(h.totalPrice))}
-        </div>
-
-        <div class="info-grid">
           ${info(
             "評分",
             h.rating != null
               ? `${h.rating}${h.ratingMax != null ? ` / ${h.ratingMax}` : ""}${h.reviewCount != null ? `（${h.reviewCount} 則）` : ""}`
               : null
           )}
+        </div>
+
+        <div class="info-grid">
           ${info("幾間臥室", h.bedrooms != null ? `${h.bedrooms} 間` : null)}
           ${info("床數說明", h.bedDescription || (h.beds != null ? `${h.beds} 張` : null))}
         </div>
