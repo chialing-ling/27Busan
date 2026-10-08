@@ -462,7 +462,109 @@ if (
   }
 }
 
-    
+    // -------------------------
+// 解析 Google Maps 網址座標
+// -------------------------
+if (
+  url.pathname === "/api/admin/resolve-map" &&
+  request.method === "GET"
+) {
+  try {
+    const rawUrl = url.searchParams.get("url");
+
+    if (!rawUrl) {
+      return Response.json(
+        { ok: false, message: "缺少 Google Maps 網址" },
+        { status: 400 }
+      );
+    }
+
+    let target;
+
+    try {
+      target = new URL(rawUrl);
+    } catch {
+      return Response.json(
+        { ok: false, message: "網址格式不正確" },
+        { status: 400 }
+      );
+    }
+
+    if (target.protocol !== "https:") {
+      return Response.json(
+        { ok: false, message: "只接受 HTTPS 網址" },
+        { status: 400 }
+      );
+    }
+
+    const host = target.hostname.toLowerCase();
+
+    const isGoogleMap =
+      host === "maps.app.goo.gl" ||
+      host === "goo.gl" ||
+      /(^|\.)google\.[a-z.]+$/i.test(host);
+
+    if (!isGoogleMap) {
+      return Response.json(
+        { ok: false, message: "只接受 Google Maps 網址" },
+        { status: 400 }
+      );
+    }
+
+    const res = await fetch(rawUrl, {
+      redirect: "follow"
+    });
+
+    const finalUrl = res.url || rawUrl;
+
+    let decoded = finalUrl;
+
+    try {
+      decoded = decodeURIComponent(finalUrl);
+    } catch {}
+
+    let match =
+      decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+
+    if (match) {
+      return Response.json({
+        ok: true,
+        lat: Number(match[1]),
+        lng: Number(match[2]),
+        source: "place"
+      });
+    }
+
+    match =
+      decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+
+    if (match) {
+      return Response.json({
+        ok: true,
+        lat: Number(match[1]),
+        lng: Number(match[2]),
+        source: "viewport"
+      });
+    }
+
+    return Response.json(
+      {
+        ok: false,
+        message: "無法從這個 Google Maps 網址取得座標"
+      },
+      { status: 400 }
+    );
+
+  } catch (err) {
+    return Response.json(
+      {
+        ok: false,
+        message: err.message
+      },
+      { status: 500 }
+    );
+  }
+}
     // -------------------------
     // 測試 D1
     // -------------------------
