@@ -333,69 +333,83 @@ if (
     };
 
     const result = await env.DB.prepare(`
-      INSERT INTO places (
-        type,
-        name,
-        area,
-        platform,
-        url,
-        map_url,
-        lat,
-        lng,
-        rating,
-        rating_max,
-        review_count,
-        total_price,
-        bedrooms,
-        bed_description,
-        has_kitchen,
-        has_living_room,
-        has_elevator,
-has_washer_dryer,
-has_luggage_storage,
-        cancel_policy,
-        note,
-        image_url,
-        updated_at
-      )
-      VALUES (
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, CURRENT_TIMESTAMP
-      )
-    `).bind(
-      body.type || "hotel",
-      String(body.name).trim(),
-      emptyToNull(body.area),
-      emptyToNull(body.platform),
+  INSERT INTO places (
+    type,
+    name,
+    area,
+    platform,
+    url,
+    map_url,
+    lat,
+    lng,
+    rating,
+    rating_max,
+    review_count,
+    total_price,
+    bedrooms,
+    bed_description,
+    has_kitchen,
+    has_living_room,
+    has_elevator,
+    has_washer_dryer,
+    has_luggage_storage,
+    place_category,
+    price_info,
+    opening_hours,
+    closed_days,
+    stay_duration,
+    reservation_available,
+    cancel_policy,
+    note,
+    image_url,
+    updated_at
+  )
+  VALUES (
+    ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?,
+    CURRENT_TIMESTAMP
+  )
+`).bind(
+  body.type || "hotel",
+  String(body.name).trim(),
+  emptyToNull(body.area),
+  emptyToNull(body.platform),
 
-      emptyToNull(body.bookingUrl),
-      emptyToNull(body.mapUrl),
+  emptyToNull(body.bookingUrl),
+  emptyToNull(body.mapUrl),
 
-      numberOrNull(body.lat),
-      numberOrNull(body.lng),
+  numberOrNull(body.lat),
+  numberOrNull(body.lng),
 
-      numberOrNull(body.rating),
-      numberOrNull(body.ratingMax),
-      numberOrNull(body.reviewCount),
+  numberOrNull(body.rating),
+  numberOrNull(body.ratingMax),
+  numberOrNull(body.reviewCount),
 
-      numberOrNull(body.totalPrice),
+  numberOrNull(body.totalPrice),
 
-      numberOrNull(body.bedrooms),
-      emptyToNull(body.bedDescription),
+  numberOrNull(body.bedrooms),
+  emptyToNull(body.bedDescription),
 
-      boolOrNull(body.hasKitchen),
-      boolOrNull(body.hasLivingRoom),
-      boolOrNull(body.hasElevator),
-      boolOrNull(body.hasWasherDryer),
-      boolOrNull(body.hasLuggageStorage),
+  boolOrNull(body.hasKitchen),
+  boolOrNull(body.hasLivingRoom),
+  boolOrNull(body.hasElevator),
+  boolOrNull(body.hasWasherDryer),
+  boolOrNull(body.hasLuggageStorage),
 
-      emptyToNull(body.cancelPolicy),
-      emptyToNull(body.note),
+  emptyToNull(body.placeCategory),
+  emptyToNull(body.priceInfo),
+  emptyToNull(body.openingHours),
+  emptyToNull(body.closedDays),
+  emptyToNull(body.stayDuration),
 
-      emptyToNull(body.image)
-    ).run();
+  boolOrNull(body.reservationAvailable),
+
+  emptyToNull(body.cancelPolicy),
+  emptyToNull(body.note),
+  emptyToNull(body.image)
+).run();
 
     return Response.json({
       ok: true,
@@ -465,57 +479,79 @@ if (
     };
 
     const result = await env.DB.prepare(`
-      UPDATE places
-      SET
-        type = ?,
-        name = ?,
-        area = ?,
-        platform = ?,
-        url = ?,
-        map_url = ?,
-        lat = ?,
-        lng = ?,
-        rating = ?,
-        rating_max = ?,
-        review_count = ?,
-        total_price = ?,
-        bedrooms = ?,
-        bed_description = ?,
-        has_kitchen = ?,
-        has_living_room = ?,
-        has_elevator = ?,
-        has_washer_dryer = ?,
-        has_luggage_storage = ?,
-        cancel_policy = ?,
-        note = ?,
-        image_url = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).bind(
-      body.type || "hotel",
-      String(body.name).trim(),
-      emptyToNull(body.area),
-      emptyToNull(body.platform),
-      emptyToNull(body.bookingUrl),
-      emptyToNull(body.mapUrl),
-      numberOrNull(body.lat),
-      numberOrNull(body.lng),
-      numberOrNull(body.rating),
-      numberOrNull(body.ratingMax),
-      numberOrNull(body.reviewCount),
-      numberOrNull(body.totalPrice),
-      numberOrNull(body.bedrooms),
-      emptyToNull(body.bedDescription),
-      boolOrNull(body.hasKitchen),
-      boolOrNull(body.hasLivingRoom),
-      boolOrNull(body.hasElevator),
-      boolOrNull(body.hasWasherDryer),
-      boolOrNull(body.hasLuggageStorage),
-      emptyToNull(body.cancelPolicy),
-      emptyToNull(body.note),
-      emptyToNull(body.image),
-      id
-    ).run();
+  UPDATE places
+  SET
+    type = ?,
+    name = ?,
+    area = ?,
+    platform = ?,
+    url = ?,
+    map_url = ?,
+    lat = ?,
+    lng = ?,
+    rating = ?,
+    rating_max = ?,
+    review_count = ?,
+    total_price = ?,
+    bedrooms = ?,
+    bed_description = ?,
+    has_kitchen = ?,
+    has_living_room = ?,
+    has_elevator = ?,
+    has_washer_dryer = ?,
+    has_luggage_storage = ?,
+    place_category = ?,
+    price_info = ?,
+    opening_hours = ?,
+    closed_days = ?,
+    stay_duration = ?,
+    reservation_available = ?,
+    cancel_policy = ?,
+    note = ?,
+    image_url = ?,
+    updated_at = CURRENT_TIMESTAMP
+  WHERE id = ?
+`).bind(
+  body.type || "hotel",
+  String(body.name).trim(),
+  emptyToNull(body.area),
+  emptyToNull(body.platform),
+
+  emptyToNull(body.bookingUrl),
+  emptyToNull(body.mapUrl),
+
+  numberOrNull(body.lat),
+  numberOrNull(body.lng),
+
+  numberOrNull(body.rating),
+  numberOrNull(body.ratingMax),
+  numberOrNull(body.reviewCount),
+
+  numberOrNull(body.totalPrice),
+
+  numberOrNull(body.bedrooms),
+  emptyToNull(body.bedDescription),
+
+  boolOrNull(body.hasKitchen),
+  boolOrNull(body.hasLivingRoom),
+  boolOrNull(body.hasElevator),
+  boolOrNull(body.hasWasherDryer),
+  boolOrNull(body.hasLuggageStorage),
+
+  emptyToNull(body.placeCategory),
+  emptyToNull(body.priceInfo),
+  emptyToNull(body.openingHours),
+  emptyToNull(body.closedDays),
+  emptyToNull(body.stayDuration),
+
+  boolOrNull(body.reservationAvailable),
+
+  emptyToNull(body.cancelPolicy),
+  emptyToNull(body.note),
+  emptyToNull(body.image),
+
+  id
+).run();
 
     return Response.json({
       ok: true,
@@ -1339,6 +1375,17 @@ if (
           row.has_luggage_storage == null
             ? null
             : Boolean(row.has_luggage_storage),
+
+        placeCategory: row.place_category,
+priceInfo: row.price_info,
+openingHours: row.opening_hours,
+closedDays: row.closed_days,
+stayDuration: row.stay_duration,
+
+reservationAvailable:
+  row.reservation_available == null
+    ? null
+    : Boolean(row.reservation_available),
 
         cancelPolicy: row.cancel_policy,
         note: row.note,
