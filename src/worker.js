@@ -569,6 +569,102 @@ if (
 
       return null;
     }
+    function extractPlusCode(text) {
+  if (!text) return null;
+
+  let value = String(text);
+
+  // Google 的 continue URL 可能被 encode 好幾層
+  for (let i = 0; i < 4; i++) {
+    try {
+      const decoded = decodeURIComponent(value);
+
+      if (decoded === value) break;
+
+      value = decoded;
+    } catch {
+      break;
+    }
+  }
+
+  const match = value.match(
+    /([23456789CFGHJMPQRVWX]{8}\+[23456789CFGHJMPQRVWX]{2,7})/i
+  );
+
+  return match ? match[1].toUpperCase() : null;
+}
+
+
+function decodePlusCode(code) {
+  const alphabet = "23456789CFGHJMPQRVWX";
+
+  code = String(code)
+    .toUpperCase()
+    .replace("+", "")
+    .replace(/0/g, "");
+
+  if (code.length < 10) {
+    return null;
+  }
+
+  let lat = -90;
+  let lng = -180;
+
+  let resolution = 20;
+
+  // 前 10 碼：lat/lng 交錯 base-20
+  for (let i = 0; i < 10; i += 2) {
+    const latDigit = alphabet.indexOf(code[i]);
+    const lngDigit = alphabet.indexOf(code[i + 1]);
+
+    if (latDigit < 0 || lngDigit < 0) {
+      return null;
+    }
+
+    lat += latDigit * resolution;
+    lng += lngDigit * resolution;
+
+    resolution /= 20;
+  }
+
+  let latResolution = 0.000125;
+  let lngResolution = 0.000125;
+
+  // 第 11 碼之後是 5 x 4 grid
+  for (let i = 10; i < code.length; i++) {
+    const digit = alphabet.indexOf(code[i]);
+
+    if (digit < 0) {
+      return null;
+    }
+
+    latResolution /= 5;
+    lngResolution /= 4;
+
+    const row = Math.floor(digit / 4);
+    const col = digit % 4;
+
+    lat += row * latResolution;
+    lng += col * lngResolution;
+  }
+
+  // 使用區域中心點
+  lat += latResolution / 2;
+  lng += lngResolution / 2;
+
+  if (
+    lat < -90 || lat > 90 ||
+    lng < -180 || lng > 180
+  ) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+    source: "plus-code"
+  };
+}
 
     // -------------------------
     // 對照 Python 網域檢查
@@ -661,9 +757,21 @@ if (
     // OR
     // extract(body)
     // -------------------------
-    const point =
-      extractCoordinates(finalUrl) ||
-      extractCoordinates(body);
+    let point =
+  extractCoordinates(finalUrl) ||
+  extractCoordinates(body);
+
+// Cloudflare 被 Google 導向 /sorry 時，
+// 嘗試從 continue URL / HTML 中取得 Plus Code。
+if (!point) {
+  let plusCode =
+    extractPlusCode(finalUrl) ||
+    extractPlusCode(body);
+
+  if (plusCode) {
+    point = decodePlusCode(plusCode);
+  }
+}
 
     if (!point) {
       // 這次留下診斷資訊。
