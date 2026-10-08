@@ -279,35 +279,14 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
   </section>
 </main>
+<!-- =========================
+     投票者選擇視窗
+========================= -->
 <div
   class="voter-modal-backdrop"
   id="voterModalBackdrop"
   aria-hidden="true">
-<div
-  class="voter-modal-backdrop"
-  id="rankingModalBackdrop"
-  aria-hidden="true">
 
-  <div class="voter-modal">
-
-    <h2>🏆 住宿投票排行</h2>
-
-    <p>
-      目前大家最想住的住宿
-    </p>
-
-    <div id="rankingList"></div>
-
-    <div class="voter-modal-actions">
-      <button
-        type="button"
-        id="btnRankingClose">
-        關閉
-      </button>
-    </div>
-
-  </div>
-</div>
   <div class="voter-modal">
 
     <h2>你是誰？</h2>
@@ -339,8 +318,38 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
     </div>
 
   </div>
+</div>
 
-  
+
+<!-- =========================
+     投票排行榜視窗
+========================= -->
+<div
+  class="voter-modal-backdrop"
+  id="rankingModalBackdrop"
+  aria-hidden="true">
+
+  <div class="voter-modal">
+
+    <h2>🏆 住宿投票排行</h2>
+
+    <p>
+      目前大家最想住的住宿
+    </p>
+
+    <div id="rankingList"></div>
+
+    <div class="voter-modal-actions">
+
+      <button
+        type="button"
+        id="btnRankingClose">
+        關閉
+      </button>
+
+    </div>
+
+  </div>
 </div>
   
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
