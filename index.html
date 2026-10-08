@@ -597,15 +597,62 @@ async function selectVoter(){
     await toggleVote(pending);
   }
 }
+function updateVoteButton(placeId){
+  const btn = document.querySelector(
+    `[data-vote-place-id="${placeId}"]`
+  );
 
+  if(!btn) return;
+
+  const vote =
+    voteState.get(String(placeId)) ||
+    {
+      count:0,
+      votedByMe:false
+    };
+
+  btn.classList.toggle(
+    "voted",
+    vote.votedByMe
+  );
+
+  btn.textContent =
+    `${vote.votedByMe ? "♥" : "♡"} ${vote.count}`;
+}
 
 async function toggleVote(placeId){
 
-  // 第一次投票
+  // 還沒選身分
   if(!currentVoter){
     openVoterModal(placeId);
     return;
   }
+
+  const key = String(placeId);
+
+  const oldState =
+    voteState.get(key) ||
+    {
+      count:0,
+      votedByMe:false
+    };
+
+  // -------------------------
+  // 先立即更新畫面
+  // -------------------------
+  const optimisticState = {
+    votedByMe: !oldState.votedByMe,
+    count:
+      oldState.count +
+      (oldState.votedByMe ? -1 : 1)
+  };
+
+  voteState.set(
+    key,
+    optimisticState
+  );
+
+  updateVoteButton(placeId);
 
   try{
     const res = await fetch(
@@ -621,29 +668,51 @@ async function toggleVote(placeId){
       res.status === 401 ||
       payload.needsVoter
     ){
+      // 回復原本狀態
+      voteState.set(
+        key,
+        oldState
+      );
+
+      updateVoteButton(placeId);
+
       currentVoter = null;
       updateVoterButton();
       openVoterModal(placeId);
+
       return;
     }
 
     if(!res.ok || !payload.ok){
       throw new Error(
-        payload.message || `HTTP ${res.status}`
+        payload.message ||
+        `HTTP ${res.status}`
       );
     }
 
+    // -------------------------
+    // 用伺服器真實結果校正
+    // -------------------------
     voteState.set(
-      String(placeId),
+      key,
       {
         count:Number(payload.count || 0),
         votedByMe:Boolean(payload.voted)
       }
     );
 
-    render();
+    updateVoteButton(placeId);
 
   }catch(err){
+
+    // API 失敗就恢復
+    voteState.set(
+      key,
+      oldState
+    );
+
+    updateVoteButton(placeId);
+
     alert(
       "投票失敗：" + err.message
     );
