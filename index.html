@@ -251,27 +251,34 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 }
 
 .podium-card{
-  min-width:0;
+   min-width:0;
   border:1px solid var(--line);
   border-radius:16px 16px 8px 8px;
   padding:16px 14px 0;
   text-align:center;
   overflow:hidden;
+
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
 }
 
 .podium-card.rank-1{
   background:#fffbeb;
   border-color:#fcd34d;
+  min-height:270px;
 }
 
 .podium-card.rank-2{
   background:#f8fafc;
   border-color:#cbd5e1;
+  min-height:240px;
 }
 
 .podium-card.rank-3{
   background:#fff7ed;
   border-color:#fdba74;
+  min-height:220px;
 }
 
 .podium-medal{
@@ -285,6 +292,11 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
   line-height:1.35;
   font-weight:800;
   word-break:break-word;
+
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .podium-area{
