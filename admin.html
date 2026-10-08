@@ -172,7 +172,7 @@ textarea{min-height:82px;resize:vertical}
 
   <div class="toolbar">
     <button class="primary" id="btnNew">＋ 新增住宿</button>
-    <button id="btnReload">重新讀取 hotels.json</button>
+    <button id="btnReload">重新讀取Data</button>
     <button id="btnResolveAll">批次補座標</button>
     <span class="status" id="status"></span>
   </div>
@@ -488,20 +488,24 @@ function escapeHtml(value){
 
 async function loadHotels(){
   const status = document.getElementById("status");
-  status.textContent = "讀取 hotels.json 中...";
+  status.textContent = "從 D1 讀取住宿資料中...";
 
   try{
-    const res = await fetch("hotels.json?t=" + Date.now(),{cache:"no-store"});
+    const res = await fetch("/api/places?type=hotel", {
+      cache:"no-store"
+    });
 
     if(!res.ok){
       throw new Error("HTTP " + res.status);
     }
 
-    hotels = await res.json();
+    const payload = await res.json();
 
-    if(!Array.isArray(hotels)){
-      throw new Error("hotels.json 最外層必須是陣列");
+    if(!payload.ok || !Array.isArray(payload.data)){
+      throw new Error("API 回傳格式錯誤");
     }
+
+    hotels = payload.data;
 
     renderList();
     newHotel();
@@ -510,6 +514,7 @@ async function loadHotels(){
 
   }catch(err){
     status.textContent = "讀取失敗：" + err.message;
+    showToast("讀取 D1 失敗：" + err.message, "error", 4200);
   }
 }
 
