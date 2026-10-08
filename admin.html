@@ -223,6 +223,17 @@ textarea{min-height:82px;resize:vertical}
 <main class="wrap">
 
   <div class="toolbar">
+    <button id="btnHotelMode" class="primary">
+  🛌 住宿管理
+</button>
+
+<button id="btnAttractionMode">
+  📍 景點管理
+</button>
+    <button id="btnRestaurantMode">
+  🍽️ 餐廳管理
+</button>
+    
     <button class="primary" id="btnNew">＋ 新增住宿</button>
     <button id="btnReload">重新讀取Data</button>
     <button id="btnResolveAll">批次補座標</button>
@@ -466,6 +477,21 @@ textarea{min-height:82px;resize:vertical}
 <script>
 let hotels = [];
 let editingId = null;
+let currentType = "hotel";
+const typeConfig = {
+  hotel: {
+    label: "住宿",
+    icon: "🛌"
+  },
+  attraction: {
+    label: "景點",
+    icon: "📍"
+  },
+  restaurant: {
+    label: "餐廳",
+    icon: "🍽️"
+  }
+};
 
 const textFields = [
   "platform","name","area",
@@ -557,12 +583,15 @@ function escapeHtml(value){
 
 async function loadHotels(){
   const status = document.getElementById("status");
-  status.textContent = "從 D1 讀取住宿資料中...";
+  status.textContent = `讀取${typeConfig[currentType].label}資料中...`;
 
   try{
-    const res = await fetch("/api/places?type=hotel", {
-      cache:"no-store"
-    });
+    const res = await fetch(
+      `/api/places?type=${currentType}`,
+      {
+        cache:"no-store"
+      }
+    );
 
     if(!res.ok){
       throw new Error("HTTP " + res.status);
@@ -666,8 +695,13 @@ async function resolveAllMissingCoordinates(){
   );
 
   if(!targets.length){
-    status.textContent = "沒有需要補座標的住宿。";
-    showToast("沒有需要補座標的住宿。","warning");
+    status.textContent =
+  `沒有需要補座標的${typeConfig[currentType].label}。`;
+
+showToast(
+  `沒有需要補座標的${typeConfig[currentType].label}。`,
+  "warning"
+);
     return;
   }
 
@@ -697,7 +731,7 @@ async function resolveAllMissingCoordinates(){
           },
           body:JSON.stringify({
             ...h,
-            type:"hotel"
+            type:currentType
           })
         }
       );
@@ -760,7 +794,7 @@ function renderList(){
   const el = document.getElementById("hotelList");
 
   if(!hotels.length){
-    el.innerHTML = '<div class="empty">目前沒有住宿資料</div>';
+    el.innerHTML =  `<div class="empty">目前沒有${typeConfig[currentType].label}資料</div>`;
     return;
   }
 
@@ -770,10 +804,12 @@ function renderList(){
     .map(h=>`
       <div class="item ${editingId===h.id ? "active" : ""}" data-id="${h.id}">
         <div class="item-title">
-          #${h.id} ${escapeHtml(h.name || "未命名住宿")}
+          #${h.id} ${escapeHtml(
+    h.name || `未命名${typeConfig[currentType].label}`
+  )}
         </div>
         <div class="item-meta">
-          ${escapeHtml(h.platform || "未填平台")} ・ ${escapeHtml(h.area || "未填區域")}
+          ${escapeHtml(h.area || "未填區域")}
         </div>
       </div>
     `)
@@ -792,7 +828,8 @@ function newHotel(){
   document.getElementById("hotelForm").reset();
   document.getElementById("id").value = "";
 
-  document.getElementById("formTitle").textContent = "新增住宿";
+  document.getElementById("formTitle").textContent =
+  `新增${typeConfig[currentType].label}`;
   document.getElementById("btnDelete").style.display = "none";
 
   renderList();
@@ -804,7 +841,7 @@ function editHotel(id){
 
   editingId = h.id;
 
-  document.getElementById("formTitle").textContent = `編輯住宿 #${h.id}`;
+  document.getElementById("formTitle").textContent = `編輯${typeConfig[currentType].label} #${h.id}`;
   document.getElementById("id").value = h.id;
 
   textFields.forEach(field=>{
@@ -883,7 +920,7 @@ async function saveHotelToD1(obj){
     },
     body:JSON.stringify({
       ...obj,
-      type:"hotel"
+      type:currentType
     })
   });
 
@@ -910,7 +947,10 @@ document.getElementById("hotelForm").addEventListener("submit",async e=>{
   const obj = collectForm();
 
   if(!obj.name){
-    showToast("請至少填住宿名稱。","warning");
+    showToast(
+  `請至少填${typeConfig[currentType].label}名稱。`,
+  "warning"
+);
     return;
   }
 
@@ -984,7 +1024,9 @@ document.getElementById("btnDelete").addEventListener("click",async()=>{
 
     await loadHotels();
 
-    showToast(`已刪除：${h?.name || "住宿資料"}`);
+    showToast(
+  `已刪除：${h?.name || typeConfig[currentType].label + "資料"}`
+);
 
   }catch(err){
     showToast(
@@ -994,7 +1036,64 @@ document.getElementById("btnDelete").addEventListener("click",async()=>{
     );
   }
 });
+async function switchType(type){
 
+  currentType = type;
+  editingId = null;
+
+  const config = typeConfig[type];
+
+  document
+    .getElementById("btnHotelMode")
+    .classList.toggle(
+      "primary",
+      type === "hotel"
+    );
+
+  document
+    .getElementById("btnAttractionMode")
+    .classList.toggle(
+      "primary",
+      type === "attraction"
+    );
+
+  document
+    .getElementById("btnRestaurantMode")
+    .classList.toggle(
+      "primary",
+      type === "restaurant"
+    );
+
+  document.getElementById("btnNew").textContent =
+    `＋ 新增${config.label}`;
+
+  document.getElementById("formTitle").textContent =
+    `新增${config.label}`;
+
+  document.querySelector(
+    ".layout > aside.panel .panel-head"
+  ).textContent =
+    `${config.label}清單`;
+
+  await loadHotels();
+}
+  document
+  .getElementById("btnHotelMode")
+  .addEventListener("click",()=>{
+    switchType("hotel");
+  });
+
+document
+  .getElementById("btnAttractionMode")
+  .addEventListener("click",()=>{
+    switchType("attraction");
+  });
+
+document
+  .getElementById("btnRestaurantMode")
+  .addEventListener("click",()=>{
+    switchType("restaurant");
+  });
 document.getElementById("btnNew").addEventListener("click",newHotel);
 document.getElementById("btnCancel").addEventListener("click",newHotel);
 document.getElementById("btnReload").addEventListener("click",loadHotels);
