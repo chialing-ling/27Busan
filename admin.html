@@ -336,6 +336,23 @@ textarea{min-height:82px;resize:vertical}
                 <option value="false">沒有</option>
               </select>
             </div>
+            <div class="field">
+  <label>是否有洗烘衣機 hasWasherDryer</label>
+  <select id="hasWasherDryer">
+    <option value="">未確認</option>
+    <option value="true">有</option>
+    <option value="false">沒有</option>
+  </select>
+</div>
+
+<div class="field">
+  <label>是否可寄放行李 hasLuggageStorage</label>
+  <select id="hasLuggageStorage">
+    <option value="">未確認</option>
+    <option value="true">可以</option>
+    <option value="false">不可以</option>
+  </select>
+</div>
 
           </div>
         </div>
@@ -432,7 +449,11 @@ const numberFields = [
 ];
 
 const booleanFields = [
-  "hasKitchen","hasLivingRoom","hasElevator"
+  "hasKitchen",
+  "hasLivingRoom",
+  "hasElevator",
+  "hasWasherDryer",
+  "hasLuggageStorage"
 ];
 
 const arrayFields = [
