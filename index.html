@@ -95,6 +95,88 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 #map{height:680px;background:#e5e7eb}
 .map-note{padding:10px 13px;border-top:1px solid var(--line);font-size:12px;color:var(--sub);line-height:1.5}
 .empty{padding:30px;text-align:center;color:var(--sub);background:#fff;border-radius:14px}
+  .head-side{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:flex-end;
+}
+
+.vote-btn{
+  border:1px solid #fecdd3;
+  background:#fff;
+  color:#be123c;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.vote-btn:hover{
+  background:#fff1f2;
+}
+
+.vote-btn.voted{
+  background:#fff1f2;
+  border-color:#fb7185;
+  color:#be123c;
+}
+
+.voter-btn{
+  border-color:#bfdbfe;
+  color:#1d4ed8;
+  background:#eff6ff;
+  font-weight:700;
+}
+
+.voter-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  place-items:center;
+  padding:18px;
+  background:rgba(15,23,42,.45);
+}
+
+.voter-modal-backdrop.show{
+  display:grid;
+}
+
+.voter-modal{
+  width:min(420px,100%);
+  background:#fff;
+  border-radius:16px;
+  padding:20px;
+  box-shadow:0 24px 60px rgba(15,23,42,.25);
+}
+
+.voter-modal h2{
+  margin:0 0 6px;
+  font-size:22px;
+}
+
+.voter-modal p{
+  margin:0 0 16px;
+  color:var(--sub);
+  font-size:14px;
+  line-height:1.55;
+}
+
+.voter-modal select{
+  width:100%;
+  margin-bottom:12px;
+}
+
+.voter-modal-actions{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+}
+
+.voter-modal-actions .primary{
+  background:var(--primary);
+  color:#fff;
+  border-color:var(--primary);
+}
 
 @media(max-width:1050px){
   .layout{grid-template-columns:1fr}
@@ -124,6 +206,12 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
     <button class="active" data-area="全部">全部</button>
     <div id="areaButtons" style="display:contents"></div>
     <span class="count" id="count"></span>
+    <button
+  class="voter-btn"
+  id="btnVoter"
+  type="button">
+  ♡ 我要投票
+</button>
   </div>
 
   <section class="layout">
@@ -145,7 +233,44 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
   </section>
 </main>
+<div
+  class="voter-modal-backdrop"
+  id="voterModalBackdrop"
+  aria-hidden="true">
 
+  <div class="voter-modal">
+
+    <h2>你是誰？</h2>
+
+    <p>
+      只有想投票時才需要選名字。
+      選一次後，這台裝置會記住你的身分。
+    </p>
+
+    <select id="voterSelect">
+      <option value="">請選擇你的名字</option>
+    </select>
+
+    <div class="voter-modal-actions">
+
+      <button
+        type="button"
+        id="btnVoterCancel">
+        先不要
+      </button>
+
+      <button
+        type="button"
+        id="btnVoterConfirm"
+        class="primary">
+        開始投票
+      </button>
+
+    </div>
+
+  </div>
+</div>
+  
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 let hotels = [];
@@ -154,6 +279,10 @@ let sortMode = "id";
 let map = null;
 let markerLayer = null;
 let markersByHotelId = new Map();
+let voters = [];
+let currentVoter = null;
+let voteState = new Map();
+let pendingVotePlaceId = null;
 
 function money(v){
   return v == null ? "待補" : "NT$" + Number(v).toLocaleString("zh-TW");
@@ -288,6 +417,239 @@ function renderMap(result){
   }
 }
 
+async function loadVoters(){
+  try{
+    const res = await fetch(
+      "/api/voters",
+      {cache:"no-store"}
+    );
+
+    const payload = await res.json();
+
+    if(!res.ok || !payload.ok){
+      throw new Error(
+        payload.message || `HTTP ${res.status}`
+      );
+    }
+
+    voters = payload.data || [];
+
+    const select =
+      document.getElementById("voterSelect");
+
+    select.innerHTML =
+      '<option value="">請選擇你的名字</option>' +
+      voters
+        .map(v =>
+          `<option value="${v.id}">
+            ${safe(v.name)}
+          </option>`
+        )
+        .join("");
+
+  }catch(err){
+    console.error(
+      "讀取投票成員失敗：",
+      err
+    );
+  }
+}
+
+
+async function loadCurrentVoter(){
+  try{
+    const res = await fetch(
+      "/api/voter/me",
+      {cache:"no-store"}
+    );
+
+    const payload = await res.json();
+
+    if(res.ok && payload.ok){
+      currentVoter = payload.voter || null;
+    }
+
+  }catch(err){
+    currentVoter = null;
+  }
+
+  updateVoterButton();
+}
+
+
+async function loadVotes(){
+  try{
+    const res = await fetch(
+      "/api/votes?type=hotel",
+      {cache:"no-store"}
+    );
+
+    const payload = await res.json();
+
+    if(!res.ok || !payload.ok){
+      throw new Error(
+        payload.message || `HTTP ${res.status}`
+      );
+    }
+
+    currentVoter =
+      payload.voter || currentVoter;
+
+    voteState = new Map(
+      (payload.data || []).map(x => [
+        String(x.placeId),
+        {
+          count:Number(x.count || 0),
+          votedByMe:Boolean(x.votedByMe)
+        }
+      ])
+    );
+
+    updateVoterButton();
+
+  }catch(err){
+    console.error(
+      "讀取投票資料失敗：",
+      err
+    );
+  }
+}
+
+
+function updateVoterButton(){
+  const btn =
+    document.getElementById("btnVoter");
+
+  btn.textContent = currentVoter
+    ? `👤 ${currentVoter.name}（切換）`
+    : "♡ 我要投票";
+}
+
+
+function openVoterModal(placeId=null){
+  pendingVotePlaceId = placeId;
+
+  const select =
+    document.getElementById("voterSelect");
+
+  select.value = currentVoter?.id
+    ? String(currentVoter.id)
+    : "";
+
+  document
+    .getElementById("voterModalBackdrop")
+    .classList.add("show");
+}
+
+
+function closeVoterModal(){
+  document
+    .getElementById("voterModalBackdrop")
+    .classList.remove("show");
+
+  pendingVotePlaceId = null;
+}
+
+
+async function selectVoter(){
+  const voterId = Number(
+    document.getElementById("voterSelect").value
+  );
+
+  if(!voterId){
+    alert("請先選擇你的名字。");
+    return;
+  }
+
+  const pending = pendingVotePlaceId;
+
+  const res = await fetch(
+    "/api/voter/select",
+    {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        voterId
+      })
+    }
+  );
+
+  const payload = await res.json();
+
+  if(!res.ok || !payload.ok){
+    alert(
+      payload.message || "選擇身分失敗"
+    );
+    return;
+  }
+
+  currentVoter = payload.voter;
+
+  closeVoterModal();
+
+  await loadVotes();
+
+  render();
+
+  if(pending != null){
+    await toggleVote(pending);
+  }
+}
+
+
+async function toggleVote(placeId){
+
+  // 第一次投票
+  if(!currentVoter){
+    openVoterModal(placeId);
+    return;
+  }
+
+  try{
+    const res = await fetch(
+      `/api/votes/${placeId}`,
+      {
+        method:"POST"
+      }
+    );
+
+    const payload = await res.json();
+
+    if(
+      res.status === 401 ||
+      payload.needsVoter
+    ){
+      currentVoter = null;
+      updateVoterButton();
+      openVoterModal(placeId);
+      return;
+    }
+
+    if(!res.ok || !payload.ok){
+      throw new Error(
+        payload.message || `HTTP ${res.status}`
+      );
+    }
+
+    voteState.set(
+      String(placeId),
+      {
+        count:Number(payload.count || 0),
+        votedByMe:Boolean(payload.voted)
+      }
+    );
+
+    render();
+
+  }catch(err){
+    alert(
+      "投票失敗：" + err.message
+    );
+  }
+}
+
 async function loadHotels(){
   try{
     const res = await fetch("/api/places?type=hotel", {
@@ -381,7 +743,34 @@ function render(){
             <div class="meta">📍 ${safe(h.area || "區域待補")}</div>
           </div>
 
-          <div class="platform">${safe(h.platform || "平台未填")}</div>
+          <div class="head-side">
+
+  <div class="platform">
+    ${safe(h.platform || "平台未填")}
+  </div>
+
+  ${(()=>{
+    const vote =
+      voteState.get(String(h.id)) ||
+      {
+        count:0,
+        votedByMe:false
+      };
+
+    return `
+      <button
+        type="button"
+        class="vote-btn${vote.votedByMe ? " voted" : ""}"
+        data-vote-place-id="${h.id}">
+
+        ${vote.votedByMe ? "♥" : "♡"}
+        ${vote.count}
+
+      </button>
+    `;
+  })()}
+
+</div>
         </div>
 
         <div class="price-grid">
@@ -455,10 +844,56 @@ function render(){
       }
     });
   });
+  list
+  .querySelectorAll("[data-vote-place-id]")
+  .forEach(btn=>{
+
+    btn.addEventListener("click",async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      await toggleVote(
+        Number(btn.dataset.votePlaceId)
+      );
+    });
+
+  });
 }
 
-initMap();
-loadHotels();
+document
+  .getElementById("btnVoter")
+  .addEventListener("click",()=>{
+    openVoterModal();
+  });
+
+
+document
+  .getElementById("btnVoterCancel")
+  .addEventListener("click",()=>{
+    closeVoterModal();
+  });
+
+
+document
+  .getElementById("btnVoterConfirm")
+  .addEventListener("click",()=>{
+    selectVoter();
+  });
+
+
+async function init(){
+  initMap();
+
+  await loadVoters();
+  await loadCurrentVoter();
+
+  await loadHotels();
+  await loadVotes();
+
+  render();
+}
+
+init();
 </script>
 
 </body>
