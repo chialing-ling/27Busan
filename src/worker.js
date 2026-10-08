@@ -351,6 +351,8 @@ if (
         has_kitchen,
         has_living_room,
         has_elevator,
+has_washer_dryer,
+has_luggage_storage,
         cancel_policy,
         note,
         image_url,
@@ -360,7 +362,7 @@ if (
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, CURRENT_TIMESTAMP
+        ?, ?, ?, ?, CURRENT_TIMESTAMP
       )
     `).bind(
       body.type || "hotel",
@@ -386,6 +388,8 @@ if (
       boolOrNull(body.hasKitchen),
       boolOrNull(body.hasLivingRoom),
       boolOrNull(body.hasElevator),
+      boolOrNull(body.hasWasherDryer),
+      boolOrNull(body.hasLuggageStorage),
 
       emptyToNull(body.cancelPolicy),
       emptyToNull(body.note),
@@ -480,6 +484,8 @@ if (
         has_kitchen = ?,
         has_living_room = ?,
         has_elevator = ?,
+        has_washer_dryer = ?,
+        has_luggage_storage = ?,
         cancel_policy = ?,
         note = ?,
         image_url = ?,
@@ -503,6 +509,8 @@ if (
       boolOrNull(body.hasKitchen),
       boolOrNull(body.hasLivingRoom),
       boolOrNull(body.hasElevator),
+      boolOrNull(body.hasWasherDryer),
+      boolOrNull(body.hasLuggageStorage),
       emptyToNull(body.cancelPolicy),
       emptyToNull(body.note),
       emptyToNull(body.image),
@@ -1322,6 +1330,15 @@ if (
           row.has_elevator == null
             ? null
             : Boolean(row.has_elevator),
+        hasWasherDryer:
+          row.has_washer_dryer == null
+            ? null
+            : Boolean(row.has_washer_dryer),
+
+        hasLuggageStorage:
+          row.has_luggage_storage == null
+            ? null
+            : Boolean(row.has_luggage_storage),
 
         cancelPolicy: row.cancel_policy,
         note: row.note,
