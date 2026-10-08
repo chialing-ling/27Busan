@@ -245,6 +245,11 @@ textarea{min-height:82px;resize:vertical}
               <label>評分 rating</label>
               <input id="rating" type="number" step="0.01">
             </div>
+            
+            <div class="field">
+  <label>評分滿分 ratingMax</label>
+  <input id="ratingMax" type="number" step="0.01" placeholder="Airbnb 5 / Booking 10">
+</div>
 
             <div class="field">
               <label>評論數 reviewCount</label>
@@ -422,7 +427,8 @@ const textFields = [
 
 const numberFields = [
   "lat","lng","bedrooms",
-  "rating","reviewCount","totalPrice","nights","people"
+  "rating","ratingMax","reviewCount",
+  "totalPrice","nights","people"
 ];
 
 const booleanFields = [
