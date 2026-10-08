@@ -462,13 +462,6 @@ function render(){
   });
 }
 
-document.getElementById("sort").addEventListener("change",e=>{
-  sortMode = e.target.value;
-  render();
-});
-
-document.getElementById("btnRefresh").addEventListener("click",loadHotels);
-
 initMap();
 loadHotels();
 </script>
