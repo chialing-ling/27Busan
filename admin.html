@@ -263,7 +263,7 @@ textarea{min-height:82px;resize:vertical}
             </div>
 
             <div class="field">
-              <label>訂房平台 platform</label>
+              <label id="platformLabel">訂房平台 platform</label>
               <select id="platform">
                 <option value="">請選擇</option>
                 <option value="Airbnb">Airbnb</option>
@@ -299,7 +299,7 @@ textarea{min-height:82px;resize:vertical}
             </div>
 
             <div class="field full">
-              <label>訂房網址 bookingUrl</label>
+              <label id="bookingUrlLabel">訂房網址 bookingUrl</label>
               <input id="bookingUrl" type="url">
             </div>
 
@@ -537,15 +537,44 @@ let currentType = "hotel";
 const typeConfig = {
   hotel: {
     label: "住宿",
-    icon: "🛌"
+    icon: "🛌",
+    platformLabel: "訂房平台 platform",
+    bookingUrlLabel: "訂房網址 bookingUrl",
+    platforms: [
+      ["", "請選擇"],
+      ["Airbnb", "Airbnb"],
+      ["Booking", "Booking"],
+      ["Agoda", "Agoda"],
+      ["其他", "其他"]
+    ]
   },
+
   attraction: {
     label: "景點",
-    icon: "📍"
+    icon: "📍",
+    platformLabel: "購票 / 預約平台 platform",
+    bookingUrlLabel: "購票 / 官方網址 bookingUrl",
+    platforms: [
+      ["", "請選擇"],
+      ["KKday", "KKday"],
+      ["Klook", "Klook"],
+      ["Naver Table", "Naver Table"],
+      ["其他", "其他"]
+    ]
   },
+
   restaurant: {
     label: "餐廳",
-    icon: "🍽️"
+    icon: "🍽️",
+    platformLabel: "訂位 / 查詢平台 platform",
+    bookingUrlLabel: "訂位 / 店家網址 bookingUrl",
+    platforms: [
+      ["", "請選擇"],
+      ["KKday", "KKday"],
+      ["Klook", "Klook"],
+      ["Naver Table", "Naver Table"],
+      ["其他", "其他"]
+    ]
   }
 };
 
@@ -1111,10 +1140,26 @@ async function switchType(type){
   editingId = null;
 
   const config = typeConfig[type];
+  
   const isHotel = type === "hotel";
 const isAttraction = type === "attraction";
 const isRestaurant = type === "restaurant";
+document.getElementById("platformLabel").textContent =
+  config.platformLabel;
 
+document.getElementById("bookingUrlLabel").textContent =
+  config.bookingUrlLabel;
+
+const platformSelect =
+  document.getElementById("platform");
+
+platformSelect.innerHTML =
+  config.platforms
+    .map(([value, label]) =>
+      `<option value="${value}">${label}</option>`
+    )
+    .join("");
+  
 document.getElementById(
   "hotelRoomSection"
 ).style.display =
