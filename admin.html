@@ -713,7 +713,7 @@ function newHotel(){
   editingId = null;
 
   document.getElementById("hotelForm").reset();
-  document.getElementById("id").value = nextId();
+  document.getElementById("id").value = "";
 
   document.getElementById("formTitle").textContent = "新增住宿";
   document.getElementById("btnDelete").style.display = "none";
@@ -790,6 +790,43 @@ function collectForm(){
   return obj;
 }
 
+async function saveHotelToD1(obj){
+  const isNew = editingId == null;
+
+  const url = isNew
+    ? "/api/admin/places"
+    : `/api/admin/places/${editingId}`;
+
+  const method = isNew ? "POST" : "PUT";
+
+  const res = await fetch(url,{
+    method,
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      ...obj,
+      type:"hotel"
+    })
+  });
+
+  let data = {};
+
+  try{
+    data = await res.json();
+  }catch(e){}
+
+  if(res.status === 401){
+    throw new Error("登入已過期，請重新登入後台");
+  }
+
+  if(!res.ok || !data.ok){
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+
+  return data;
+}
+  
 document.getElementById("hotelForm").addEventListener("submit",async e=>{
   e.preventDefault();
 
@@ -800,66 +837,84 @@ document.getElementById("hotelForm").addEventListener("submit",async e=>{
     return;
   }
 
-  const oldHotels = hotels.map(h=>({...h}));
+  const isNew = editingId == null;
+  const oldId = editingId;
 
-  if(editingId == null){
-    hotels.push(obj);
-  }else{
-    const idx = hotels.findIndex(x=>Number(x.id)===Number(editingId));
+  try{
+    document.getElementById("status").textContent = "儲存到 D1 中...";
 
-    if(idx >= 0){
-      hotels[idx] = obj;
+    const result = await saveHotelToD1(obj);
+
+    const savedId = isNew
+      ? result.id
+      : oldId;
+
+    await loadHotels();
+
+    if(savedId != null){
+      editHotel(Number(savedId));
     }
-  }
 
-  try{
-    await writeHotels();
-  }catch(err){
-    hotels = oldHotels;
-    renderList();
-    showToast("儲存失敗：" + err.message,"error",4200);
-    return;
-  }
-
-  // 寫入 hotels.json 成功後再更新畫面。
-  // 後續畫面更新若出錯，不再誤報成「儲存失敗」。
-  editingId = obj.id;
-
-  try{
-    renderList();
-    editHotel(obj.id);
     document.getElementById("status").textContent =
-      `已直接更新 hotels.json，共 ${hotels.length} 筆`;
-    showToast(`已儲存：${obj.name || "住宿資料"}`);
+      `已儲存到 D1，目前 ${hotels.length} 筆`;
+
+    showToast(`已儲存：${obj.name}`);
+
   }catch(err){
-    console.error("資料已儲存，但管理頁畫面更新失敗：", err);
-    document.getElementById("status").textContent =
-      "hotels.json 已儲存，管理頁畫面更新時發生錯誤";
-    showToast("資料已儲存，但管理頁畫面更新失敗","warning",4200);
+    showToast(
+      "儲存失敗：" + err.message,
+      "error",
+      4200
+    );
   }
 });
 
 document.getElementById("btnDelete").addEventListener("click",async()=>{
   if(editingId == null) return;
 
-  const h = hotels.find(x=>Number(x.id)===Number(editingId));
+  const id = editingId;
+  const h = hotels.find(
+    x => Number(x.id) === Number(id)
+  );
 
-  if(!confirm(`確定刪除「${h?.name || editingId}」？`)){
+  if(!confirm(`確定刪除「${h?.name || id}」？`)){
     return;
   }
 
-  const oldHotels = [...hotels];
-
-  hotels = hotels.filter(x=>Number(x.id)!==Number(editingId));
-
   try{
-    await writeHotels();
-    renderList();
-    newHotel();
+    const res = await fetch(
+      `/api/admin/places/${id}`,
+      {
+        method:"DELETE"
+      }
+    );
+
+    let data = {};
+
+    try{
+      data = await res.json();
+    }catch(e){}
+
+    if(res.status === 401){
+      throw new Error("登入已過期，請重新登入後台");
+    }
+
+    if(!res.ok || !data.ok){
+      throw new Error(
+        data.message || `HTTP ${res.status}`
+      );
+    }
+
+    await loadHotels();
+
     showToast(`已刪除：${h?.name || "住宿資料"}`);
+
   }catch(err){
-    hotels = oldHotels;
-    showToast("刪除失敗：" + err.message,"error",4200);
+    showToast(
+      "刪除失敗：" + err.message,
+      "error",
+      4200
+    );
   }
 });
 
