@@ -64,7 +64,8 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .desc{font-size:14px;color:#4b5563;line-height:1.55}
 .price-grid,.info-grid,.amenity-grid{display:grid;gap:8px;margin-top:12px}
 .price-grid,.info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.amenity-grid{grid-template-columns:repeat(3,1fr)}
+.amenity-grid{ grid-template-columns:
+    repeat(auto-fit,minmax(120px,1fr));}
 .box{background:#f8fafc;border-radius:10px;padding:10px;min-width:0}
 .box small{display:block;color:var(--sub);font-size:11px;margin-bottom:4px}
 .box strong{font-size:16px}
@@ -1419,6 +1420,8 @@ function render(){
           ${amenity(h.hasKitchen,"廚房")}
           ${amenity(h.hasLivingRoom,"客廳")}
           ${amenity(h.hasElevator,"電梯")}
+          ${amenity(h.hasWasherDryer,"洗烘衣機")}
+          ${amenity(h.hasLuggageStorage,"寄放行李")}
         </div>
 
         ${h.cancelPolicy ? `
