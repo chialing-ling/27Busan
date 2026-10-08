@@ -462,194 +462,242 @@ if (
   }
 }
 
-    // -------------------------
+// -------------------------
 // 解析 Google Maps 網址座標
+// 對照原本 server.py 的 resolve_google_maps_url()
 // -------------------------
 if (
   url.pathname === "/api/admin/resolve-map" &&
   request.method === "GET"
 ) {
   try {
-    const rawUrl = url.searchParams.get("url");
+    const mapUrl = (url.searchParams.get("url") || "").trim();
 
-    if (!rawUrl) {
-      return Response.json(
-        { ok: false, message: "缺少 Google Maps 網址" },
-        { status: 400 }
+    if (!mapUrl) {
+      throw new Error("缺少 Google Maps 網址");
+    }
+
+    // -------------------------
+    // 對照 Python _valid_point()
+    // -------------------------
+    function validPoint(lat, lng) {
+      return (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180
       );
     }
 
-    // 從網址或 HTML 文字中找經緯度
-    function extractCoords(text) {
+    // -------------------------
+    // 對照 Python extract_coordinates()
+    // -------------------------
+    function extractCoordinates(text) {
       if (!text) return null;
 
-      let value = String(text);
-
-      // Google 頁面裡可能有 escaped 字元
-      value = value
-        .replaceAll("\\u003d", "=")
-        .replaceAll("\\u0026", "&")
-        .replaceAll("\\/", "/");
+      let decoded = String(text);
 
       try {
-        value = decodeURIComponent(value);
+        decoded = decodeURIComponent(decoded);
       } catch {}
 
-      // Google Maps data 格式
-      let match = value.match(
-        /!3d(-?\d{1,2}(?:\.\d+)?)!4d(-?\d{1,3}(?:\.\d+)?)/
+      // 1. !3dLAT!4dLNG
+      let match = decoded.match(
+        /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/
       );
 
       if (match) {
-        return {
-          lat: Number(match[1]),
-          lng: Number(match[2]),
-          source: "place"
-        };
+        const lat = Number(match[1]);
+        const lng = Number(match[2]);
+
+        if (validPoint(lat, lng)) {
+          return {
+            lat,
+            lng,
+            source: "place"
+          };
+        }
       }
 
-      // @35.123,129.123 格式
-      match = value.match(
-        /@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/
+      // 2. query / q / ll / center
+      try {
+        const parsed = new URL(decoded);
+
+        for (const key of ["query", "q", "ll", "center"]) {
+          const values = parsed.searchParams.getAll(key);
+
+          for (const value of values) {
+            const pair = value.match(
+              /(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/
+            );
+
+            if (pair) {
+              const lat = Number(pair[1]);
+              const lng = Number(pair[2]);
+
+              if (validPoint(lat, lng)) {
+                return {
+                  lat,
+                  lng,
+                  source: "query"
+                };
+              }
+            }
+          }
+        }
+      } catch {}
+
+      // 3. @LAT,LNG
+      match = decoded.match(
+        /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/
       );
 
       if (match) {
-        return {
-          lat: Number(match[1]),
-          lng: Number(match[2]),
-          source: "viewport"
-        };
-      }
+        const lat = Number(match[1]);
+        const lng = Number(match[2]);
 
-      // query=35.123,129.123 等格式
-      match = value.match(
-        /(?:query|q|ll|center)=(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/i
-      );
-
-      if (match) {
-        return {
-          lat: Number(match[1]),
-          lng: Number(match[2]),
-          source: "query"
-        };
+        if (validPoint(lat, lng)) {
+          return {
+            lat,
+            lng,
+            source: "viewport"
+          };
+        }
       }
 
       return null;
     }
 
-    function allowedGoogleUrl(value) {
-      let parsed;
+    // -------------------------
+    // 對照 Python 網域檢查
+    // -------------------------
+    let parsedUrl;
 
-      try {
-        parsed = new URL(value);
-      } catch {
-        return false;
-      }
-
-      if (parsed.protocol !== "https:") {
-        return false;
-      }
-
-      const host = parsed.hostname.toLowerCase();
-
-      return (
-        host === "maps.app.goo.gl" ||
-        host === "goo.gl" ||
-        /(^|\.)google\.[a-z.]+$/i.test(host)
-      );
+    try {
+      parsedUrl = new URL(mapUrl);
+    } catch {
+      throw new Error("地圖網址格式不正確");
     }
 
-    if (!allowedGoogleUrl(rawUrl)) {
+    if (
+      parsedUrl.protocol !== "http:" &&
+      parsedUrl.protocol !== "https:"
+    ) {
+      throw new Error("地圖網址必須是 http/https 網址");
+    }
+
+    const host = parsedUrl.hostname.toLowerCase();
+
+    const allowed =
+      host === "maps.app.goo.gl" ||
+      host === "goo.gl" ||
+      host === "google.com" ||
+      host === "maps.google.com" ||
+      host.endsWith(".google.com") ||
+      host.endsWith(".google.co.kr") ||
+      host.endsWith(".google.com.tw");
+
+    if (!allowed) {
+      throw new Error("目前只支援 Google Maps 網址");
+    }
+
+    // -------------------------
+    // 跟 Python 一樣：
+    // 原始網址自己已經有座標就直接回傳
+    // -------------------------
+    const direct = extractCoordinates(mapUrl);
+
+    if (direct) {
+      return Response.json({
+        ok: true,
+        ...direct,
+        finalUrl: mapUrl
+      });
+    }
+
+    // -------------------------
+    // 對照 urllib.request.urlopen()
+    //
+    // 關鍵：
+    // 不再自己 manual redirect
+    // 讓 Cloudflare 自己 follow 到最後
+    // -------------------------
+    const response = await fetch(mapUrl, {
+      method: "GET",
+
+      redirect: "follow",
+
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+          "AppleWebKit/537.36 Chrome/124 Safari/537.36"
+      }
+    });
+
+    // 對照 response.geturl()
+    const finalUrl = response.url || mapUrl;
+
+    // 對照 Python response.read(768 * 1024)
+    const buffer = await response.arrayBuffer();
+
+    const maxLength = Math.min(
+      buffer.byteLength,
+      768 * 1024
+    );
+
+    const firstPart = buffer.slice(0, maxLength);
+
+    const body = new TextDecoder(
+      "utf-8",
+      { fatal: false }
+    ).decode(firstPart);
+
+    // -------------------------
+    // Python 原本就是這個順序：
+    //
+    // extract(final_url)
+    // OR
+    // extract(body)
+    // -------------------------
+    const point =
+      extractCoordinates(finalUrl) ||
+      extractCoordinates(body);
+
+    if (!point) {
+      // 這次留下診斷資訊。
+      // 如果 Cloudflare 收到的 Google 回應跟本機不同，
+      // 我們可以直接看出來，不再猜。
       return Response.json(
         {
           ok: false,
-          message: "只接受 Google Maps HTTPS 網址"
+
+          message:
+            "Google Maps 網址已開啟，但沒有找到可用座標。",
+
+          debug: {
+            status: response.status,
+            redirected: response.redirected,
+            finalUrl,
+            contentType:
+              response.headers.get("content-type"),
+            bodyBytes: buffer.byteLength
+          }
         },
-        { status: 400 }
+        {
+          status: 400
+        }
       );
     }
 
-    let currentUrl = rawUrl;
-
-    // 最多追蹤 8 次 redirect
-    for (let i = 0; i < 8; i++) {
-
-      // 每一層網址都先檢查一次
-      const fromUrl = extractCoords(currentUrl);
-
-      if (fromUrl) {
-        return Response.json({
-          ok: true,
-          ...fromUrl
-        });
-      }
-
-      const res = await fetch(currentUrl, {
-        redirect: "manual",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
-        }
-      });
-
-      // HTTP Redirect
-      if (res.status >= 300 && res.status < 400) {
-        const location = res.headers.get("Location");
-
-        if (!location) {
-          break;
-        }
-
-        const nextUrl = new URL(location, currentUrl).href;
-
-        // 每一次跳轉都重新驗證，避免跳到非 Google 網址
-        if (!allowedGoogleUrl(nextUrl)) {
-          return Response.json(
-            {
-              ok: false,
-              message: "Google Maps 導向了不允許的網址"
-            },
-            { status: 400 }
-          );
-        }
-
-        currentUrl = nextUrl;
-        continue;
-      }
-
-      // 再檢查實際 response URL
-      const fromFinalUrl = extractCoords(res.url);
-
-      if (fromFinalUrl) {
-        return Response.json({
-          ok: true,
-          ...fromFinalUrl
-        });
-      }
-
-      // 有些 Google Maps 網址不會把座標放在網址，
-      // 改從回傳 HTML 裡尋找
-      const html = await res.text();
-
-      const fromHtml = extractCoords(html);
-
-      if (fromHtml) {
-        return Response.json({
-          ok: true,
-          ...fromHtml
-        });
-      }
-
-      break;
-    }
-
-    return Response.json(
-      {
-        ok: false,
-        message: "無法從這個 Google Maps 網址取得座標"
-      },
-      { status: 400 }
-    );
+    return Response.json({
+      ok: true,
+      lat: point.lat,
+      lng: point.lng,
+      source: point.source,
+      finalUrl
+    });
 
   } catch (err) {
     return Response.json(
@@ -657,7 +705,9 @@ if (
         ok: false,
         message: err.message
       },
-      { status: 500 }
+      {
+        status: 400
+      }
     );
   }
 }
