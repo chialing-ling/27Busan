@@ -476,6 +476,21 @@ button.active{background:var(--primary);color:#fff;border-color:var(--primary)}
     display:none;
   }
 
+  /* 手機版取消桌機頒獎台高度，並固定為 1、2、3 名順序 */
+  .podium-card.rank-1,
+  .podium-card.rank-2,
+  .podium-card.rank-3{
+    min-height:0;
+  }
+
+  .podium-card.rank-1{order:1;}
+  .podium-card.rank-2{order:2;}
+  .podium-card.rank-3{order:3;}
+
+  .podium-name{
+    min-height:0;
+  }
+
   .ranking-rest-grid{
     grid-template-columns:1fr;
   }
