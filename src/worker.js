@@ -164,13 +164,16 @@ export default {
     // -------------------------
     // 保護 admin.html
     // -------------------------
-    if (url.pathname === "/admin.html") {
-      if (!(await isAdmin(request, env))) {
-        return loginPage();
-      }
+    if (
+  url.pathname === "/admin" ||
+  url.pathname === "/admin.html"
+) {
+  if (!(await isAdmin(request, env))) {
+    return loginPage();
+  }
 
-      return env.ASSETS.fetch(request);
-    }
+  return env.ASSETS.fetch(request);
+}
 
     // -------------------------
     // 保護未來所有 admin API
